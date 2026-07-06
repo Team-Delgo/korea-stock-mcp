@@ -11,11 +11,11 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
-import type { AppConfig } from "../src/config.js";
-import type { KisEnv } from "../src/config.js";
-import { createExpressApp } from "../src/server-factory.js";
-import { getKisAccessToken, clearKisTokenCache } from "../src/services/kis-auth.js";
-import { kisGet } from "../src/clients/kis-rest.js";
+import type { AppConfig } from "../../src/config.js";
+import type { KisEnv } from "../../src/config.js";
+import { createExpressApp } from "../../src/server-factory.js";
+import { getKisAccessToken, clearKisTokenCache } from "../../src/services/kis-auth.js";
+import { kisGet } from "../../src/clients/kis-rest.js";
 
 const KIS_APP_KEY = process.env.KIS_APP_KEY;
 const KIS_APP_SECRET = process.env.KIS_APP_SECRET;
@@ -126,7 +126,7 @@ describe.skipIf(!hasCredentials)("stock_get_quote (real)", () => {
       source: "KIS",
       source_api: "inquire-price",
     });
-    expect(typeof result.structuredContent.meta.fetched_at).toBe("string");
+    expect(typeof result.structuredContent.meta.as_of).toBe("string");
   });
 });
 
