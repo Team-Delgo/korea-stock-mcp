@@ -131,4 +131,5 @@ MCP tool result는 `structuredContent`와 JSON 문자열 `TextContent`를 함께
 - 사용자가 보는 실행/배포 문서는 한국어로 작성합니다.
 - 구현자 인수인계는 `docs/HANDOFF_KO.md`에 유지합니다.
 - Railway 배포 절차는 `docs/RAILWAY_DEPLOY_KO.md`에 유지합니다.
+- PlayMCP 컨테이너 레지스트리 등록 절차는 `docs/PLAYMCP_CONTAINER_REGISTRY_KO.md`에 유지합니다.
 - 코드 작업 규칙은 `AGENTS.md`와 이 문서에 함께 반영합니다.
