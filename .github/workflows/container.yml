@@ -52,5 +52,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            RUNTIME_ENV_CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
+          secrets: |
+            runtime_env=${{ secrets.PLAYMCP_RUNTIME_ENV }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

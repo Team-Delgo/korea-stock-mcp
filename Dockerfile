@@ -21,12 +21,19 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV MCP_ENDPOINT=/mcp
+ENV DOTENV_CONFIG_PATH=.env.production
 
+ARG RUNTIME_ENV_CACHE_BUST=unset
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/package-lock.json ./package-lock.json
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/data ./data
+RUN --mount=type=secret,id=runtime_env,required=false \
+  echo "runtime env cache bust: ${RUNTIME_ENV_CACHE_BUST}" >/dev/null && \
+  if [ -f /run/secrets/runtime_env ]; then \
+    cp /run/secrets/runtime_env ./.env.production && chown node:node ./.env.production && chmod 600 ./.env.production; \
+  fi
 
 USER node
 EXPOSE 3000
