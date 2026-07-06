@@ -121,8 +121,8 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
   server.registerTool(
     "resolve_stock",
     {
-      title: "Resolve Stock",
-      description: "Resolve a Korean stock name, English name, choseong (초성), or abbreviation to KIS stock_code. corp_code is null until DART integration.",
+      title: "종목 검색",
+      description: "종목명(한글/영문), 초성, 약칭으로 KIS 종목코드를 검색합니다. corp_code는 DART 연동 전까지 null입니다.",
       inputSchema: {
         query: z.string().min(1),
         market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
@@ -156,8 +156,8 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
   server.registerTool(
     "get_stock_master",
     {
-      title: "Get Stock Master",
-      description: "List all Korean listed stock master records from local KIS data.",
+      title: "종목 마스터 조회",
+      description: "로컬 KIS 데이터에서 국내 상장 종목 마스터 목록을 조회합니다.",
       inputSchema: {
         market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
         include_delisted: z.boolean().default(false),
@@ -183,8 +183,8 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
   server.registerTool(
     "stock_get_quote",
     {
-      title: "Get Stock Quote",
-      description: "Get a current quote for a Korean stock. Accepts a 6-digit stock code or a stock name (Korean/English, choseong, or abbreviation).",
+      title: "주식 현재가 조회",
+      description: "국내 주식의 현재가, 등락률, 거래량, 시가총액 등 시세 정보를 조회합니다. 6자리 종목코드 또는 종목명(한글/영문, 초성, 약칭)을 입력할 수 있습니다.",
       inputSchema: {
         stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명 (예: 005930, 삼성전자, ㅅㅅㅈㅈ, 삼전)"),
         market_div_code: z.string().default("J"),
@@ -258,8 +258,8 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
   server.registerTool(
     "stock_get_orderbook",
     {
-      title: "Get Stock Orderbook",
-      description: "Get bid/ask orderbook and expected execution data. Accepts a 6-digit stock code or a stock name.",
+      title: "주식 호가 조회",
+      description: "매도/매수 호가 및 예상체결 정보를 조회합니다. 6자리 종목코드 또는 종목명을 입력할 수 있습니다.",
       inputSchema: {
         stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명"),
         market_div_code: z.string().default("J"),
@@ -360,9 +360,9 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
   server.registerTool(
     "stock_get_price_history",
     {
-      title: "Get Stock Price History",
+      title: "주식 기간별 시세 조회",
       description:
-        "Get daily, weekly, monthly, or yearly OHLCV history. Accepts a 6-digit stock code or a stock/ETF name. Max 100 records per request (KIS API limit).",
+        "일/주/월/년 단위 OHLCV 시세 이력을 조회합니다. 6자리 종목코드 또는 종목명/ETF명을 입력할 수 있습니다. 1회 요청 시 최대 100건까지 반환됩니다(KIS API 제한).",
       inputSchema: {
         stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명/ETF명"),
         period: z.enum(["D", "W", "M", "Y"]).default("D"),
