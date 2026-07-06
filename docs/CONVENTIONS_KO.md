@@ -132,4 +132,5 @@ MCP tool result는 `structuredContent`와 JSON 문자열 `TextContent`를 함께
 - 구현자 인수인계는 `docs/HANDOFF_KO.md`에 유지합니다.
 - Railway 배포 절차는 `docs/RAILWAY_DEPLOY_KO.md`에 유지합니다.
 - PlayMCP 컨테이너 레지스트리 등록 절차는 `docs/PLAYMCP_CONTAINER_REGISTRY_KO.md`에 유지합니다.
+- PlayMCP가 런타임 환경변수 주입을 지원하지 않는 PoC에서는 `PLAYMCP_RUNTIME_ENV` GitHub Actions Secret으로 baked-secret 이미지를 생성할 수 있습니다.
 - 코드 작업 규칙은 `AGENTS.md`와 이 문서에 함께 반영합니다.

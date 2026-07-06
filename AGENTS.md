@@ -57,6 +57,8 @@ npm.cmd run build
 docker build -t korea-stock-mcp:local .
 ```
 
+PlayMCP baked-secret 이미지는 PoC용입니다. Secret 값은 파일에 쓰거나 커밋하지 말고 `PLAYMCP_RUNTIME_ENV` GitHub Actions Secret으로만 전달합니다.
+
 ## Git 규칙
 
 - 의미 있는 작업 단위마다 커밋합니다.
