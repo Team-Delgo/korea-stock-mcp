@@ -71,7 +71,7 @@ export function registerDartTools(server: McpServer) {
       }
     },
     async ({ companyName, stockCode, year, reportCode }) => {
-      const companyResolution = resolveDartCompany({ companyName, stockCode });
+      const companyResolution = await resolveDartCompany({ companyName, stockCode });
 
       if (!companyResolution.ok) {
         return jsonToolResponse(
