@@ -7,6 +7,7 @@ import {
   type DartFinancialStatementItem
 } from "../clients/dart.js";
 import { createMeta, envelopeOutputSchema, successEnvelope } from "../schemas/common.js";
+import { resolveDartCompany } from "../services/dart-stock-resolver.js";
 import { jsonToolResponse, registerNotImplementedTool } from "./helpers.js";
 
 const dartFinancialStatementInputSchema = {
@@ -15,24 +16,6 @@ const dartFinancialStatementInputSchema = {
   year: z.string().regex(/^\d{4}$/),
   reportCode: z.enum(["11013", "11012", "11014", "11011"]).default("11011")
 };
-
-const DART_COMPANY_MAPPINGS = [
-  {
-    companyName: "삼성전자",
-    stockCode: "005930",
-    corpCode: "00126380"
-  },
-  {
-    companyName: "SK하이닉스",
-    stockCode: "000660",
-    corpCode: "00164779"
-  },
-  {
-    companyName: "LG에너지솔루션",
-    stockCode: "373220",
-    corpCode: "01515323"
-  }
-] as const;
 
 const TARGET_ACCOUNTS = [
   "매출액",
@@ -88,16 +71,15 @@ export function registerDartTools(server: McpServer) {
       }
     },
     async ({ companyName, stockCode, year, reportCode }) => {
-      const company = resolveDartCompany({ companyName, stockCode });
+      const companyResolution = resolveDartCompany({ companyName, stockCode });
 
-      if (!company) {
+      if (!companyResolution.ok) {
         return jsonToolResponse(
           {
             ok: false,
             error: {
               code: "INVALID_INPUT",
-              message:
-                "Supported companies for this MVP are 삼성전자, SK하이닉스, and LG에너지솔루션. Provide companyName or stockCode."
+              message: companyResolution.message
             },
             meta: createMeta("DART", "dart_get_financial_statement")
           },
@@ -105,6 +87,7 @@ export function registerDartTools(server: McpServer) {
         );
       }
 
+      const { company } = companyResolution;
       const client = new DartClient(defaultConfig.dart);
 
       try {
@@ -120,7 +103,8 @@ export function registerDartTools(server: McpServer) {
               company: {
                 company_name: company.companyName,
                 stock_code: company.stockCode,
-                corp_code: company.corpCode
+                corp_code: company.corpCode,
+                market: company.market
               },
               business_year: year,
               report_code: reportCode,
@@ -142,18 +126,6 @@ export function registerDartTools(server: McpServer) {
       }
     }
   );
-}
-
-function resolveDartCompany(input: { companyName?: string; stockCode?: string }) {
-  const normalizedCompanyName = input.companyName?.replace(/\s/g, "").toLowerCase();
-
-  return DART_COMPANY_MAPPINGS.find((company) => {
-    const mappedName = company.companyName.replace(/\s/g, "").toLowerCase();
-    return (
-      (normalizedCompanyName && mappedName === normalizedCompanyName) ||
-      (input.stockCode && company.stockCode === input.stockCode)
-    );
-  });
 }
 
 function summarizeFinancialAccounts(rows: DartFinancialStatementItem[]) {

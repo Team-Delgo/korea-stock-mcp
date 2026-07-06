@@ -93,7 +93,9 @@ You can also use a supported stock code:
 }
 ```
 
-This MVP supports internal corp-code mapping for 삼성전자, SK하이닉스, and LG에너지솔루션. The response is wrapped in the common envelope and summarizes revenue, operating income, net income, total assets, total liabilities, and total equity.
+For Korean `companyName` input, the DART resolver searches `data/stock_data_ko.json` by stock name and then maps the resulting stock code to a DART `corp_code`. English stock data is kept in `data/stock_data_en.json` for future resolver expansion.
+
+This MVP supports DART `corp_code` mapping only for 삼성전자, SK하이닉스, and LG에너지솔루션. Other company names may resolve to a stock code, but the DART API call will return a clear unsupported `corp_code` mapping error until OpenDART corp-code data is integrated. The response is wrapped in the common envelope and summarizes revenue, operating income, net income, total assets, total liabilities, and total equity.
 
 ## Scripts
 
