@@ -1,6 +1,6 @@
 {
   "name": "korea-stocks-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Read-only KIS and DART MCP server skeleton for Kakao PlayMCP.",
   "type": "module",
   "private": true,
