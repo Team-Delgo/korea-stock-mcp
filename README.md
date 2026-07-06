@@ -121,6 +121,34 @@ The DART resolver now loads OpenDART `corpCode.xml` data, parses the ZIP-contain
 
 DART financial statement accounts are matched with conservative aliases for common OpenDART account-name variants. When consolidated (`CFS`) and separate (`OFS`) rows are both available for the same alias, the consolidated row is preferred.
 
+## MVP 로컬 검증 결과
+
+PR #1부터 PR #5까지 merge한 뒤, 로컬 환경에서 실제 OpenDART API를 호출해 DART MVP 흐름을 검증했습니다.
+
+검증 환경:
+
+- MCP endpoint: `http://127.0.0.1:3000/mcp`
+- 로컬 `.env`에 `DART_API_KEY` 설정
+- mock이 아닌 실제 OpenDART API 호출로 검증
+
+검증 완료 케이스:
+
+| Tool | 입력값 | 결과 | 비고 |
+| --- | --- | --- | --- |
+| `dart_get_company_overview` | `현대차` | 성공 | KOSPI, `stock_code` 005380, `corp_code` 00164742 |
+| `dart_get_financial_statement` | `현대차` | 성공 | 2023년 사업보고서 기준, 주요 6개 계정 반환: `revenue`, `operating_income`, `net_income`, `total_assets`, `total_liabilities`, `total_equity` |
+| `dart_get_company_overview` | `카카오` | 성공 | KOSPI, `stock_code` 035720, `corp_code` 00258801 |
+| `dart_get_company_overview` | `NAVER` | 성공 | KOSPI, `stock_code` 035420, `corp_code` 00266961 |
+| `dart_get_financial_statement` | `NAVER` | 성공 | 2023년 사업보고서 기준, 주요 6개 계정 반환 |
+| `dart_get_company_overview` | `알테오젠` | 성공 | KOSDAQ GLOBAL, `stock_code` 196170, `corp_code` 00989619 |
+| `dart_get_company_overview` | `없는회사` | 정상 실패 | `INVALID_INPUT` |
+
+`현대차`와 `알테오젠`은 기존 하드코딩 fallback 종목이 아닙니다. 두 종목의 조회 성공을 통해 `stock_data_ko.json` 기반 종목명 검색과 OpenDART `corpCode.xml` 기반 `stockCode` → `corpCode` 매핑이 하드코딩되지 않은 상장사에도 실제로 동작함을 확인했습니다.
+
+또한 `현대차` 재무제표 테스트에서 `net_income`이 정상 반환되었습니다. 이를 통해 DART 계정명 alias matching 개선이 실제 로컬 API 테스트에서도 동작함을 확인했습니다.
+
+제한사항: 현재 영문 종목명 매칭은 보수적으로 동작합니다. `NAVER`는 조회되지만, `naver` 또는 `Naver`처럼 소문자/혼합 대소문자 입력은 아직 조회되지 않을 수 있습니다. 영문 종목명 대소문자 normalize는 후속 PR에서 개선할 예정입니다.
+
 ## Scripts
 
 ```powershell
