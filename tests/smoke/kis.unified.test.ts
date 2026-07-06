@@ -196,6 +196,7 @@ describe.skipIf(!hasCredentials)("stock_get_price_history (real)", () => {
       end_date: "20260706",
     });
 
+    expect(result.isError).toBeFalsy();
     const rows = result.structuredContent.data.rows as { high: number; low: number }[];
     for (const row of rows) {
       expect(row.high).toBeGreaterThanOrEqual(row.low);
@@ -256,6 +257,8 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
       limit: 1,
     });
 
+    expect(topResult.isError).toBeFalsy();
+    expect(bottomResult.isError).toBeFalsy();
     const topRate = topResult.structuredContent.data.items[0].change_rate as number;
     const bottomRate = bottomResult.structuredContent.data.items[0].change_rate as number;
     expect(topRate).toBeGreaterThanOrEqual(bottomRate);
