@@ -3,6 +3,7 @@ import request from "supertest";
 import type { AppConfig } from "../src/config.js";
 import { createExpressApp } from "../src/server-factory.js";
 import { clearKisTokenCache } from "../src/services/kis-auth.js";
+import { clearKisResponseCache } from "../src/services/kis-response-cache.js";
 
 const cfg: AppConfig = {
   host: "127.0.0.1",
@@ -59,6 +60,7 @@ async function callTool(name: string, args: object) {
 describe("stock_get_quote", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 
@@ -195,6 +197,7 @@ describe("stock_get_quote", () => {
 describe("stock_get_orderbook", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 
@@ -289,6 +292,7 @@ describe("stock_get_orderbook", () => {
 describe("stock_get_price_history", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 
@@ -371,6 +375,7 @@ describe("stock_get_price_history", () => {
   it("sends correct fid_period_div_code for each period", async () => {
     for (const period of ["D", "W", "M", "Y"] as const) {
       clearKisTokenCache();
+      clearKisResponseCache();
       const mockFetch = vi.fn()
         .mockResolvedValueOnce(fakeTokenRes())
         .mockResolvedValueOnce(fakeKisBody({ output1: {}, output2: fakeOutput2 }));

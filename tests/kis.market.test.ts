@@ -3,6 +3,7 @@ import request from "supertest";
 import type { AppConfig } from "../src/config.js";
 import { createExpressApp } from "../src/server-factory.js";
 import { clearKisTokenCache } from "../src/services/kis-auth.js";
+import { clearKisResponseCache } from "../src/services/kis-response-cache.js";
 
 const cfg: AppConfig = {
   host: "127.0.0.1",
@@ -133,6 +134,7 @@ const fakeMarketCapOutput = [
 describe("market_get_movers: volume", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 
@@ -260,6 +262,7 @@ describe("market_get_movers: volume", () => {
 describe("market_get_movers: change_rate", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 
@@ -326,6 +329,7 @@ describe("market_get_movers: change_rate", () => {
 describe("market_get_movers: market_cap", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 
@@ -378,6 +382,7 @@ describe("market_get_movers: market_cap", () => {
 describe("market_get_movers: NOT_IMPLEMENTED types", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 
@@ -399,6 +404,7 @@ describe("market_get_movers: NOT_IMPLEMENTED types", () => {
 describe("market_get_movers: error handling", () => {
   beforeEach(() => {
     clearKisTokenCache();
+    clearKisResponseCache();
     vi.unstubAllGlobals();
   });
 

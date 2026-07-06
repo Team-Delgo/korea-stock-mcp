@@ -9,6 +9,7 @@ import {
   envelopeOutputSchema,
   type ErrorEnvelope,
 } from "../schemas/common.js";
+import { kisGetCached, kisSetCached, CACHE_TTL_SEC } from "../services/kis-response-cache.js";
 
 const READ_ONLY = {
   readOnlyHint: true,
@@ -82,19 +83,17 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
       try {
         // ── volume / trading_value ────────────────────────────────────────────
         if (ranking_type === "volume" || ranking_type === "trading_value") {
-          const body = await kisGet<{
+          type VolumeBody = {
             output: Array<{
-              hts_kor_isnm: string;
-              mksc_shrn_iscd: string;
-              data_rank: string;
-              stck_prpr: string;
-              prdy_vrss: string;
-              prdy_vrss_sign: string;
-              prdy_ctrt: string;
-              acml_vol: string;
-              acml_tr_pbmn: string;
+              hts_kor_isnm: string; mksc_shrn_iscd: string; data_rank: string;
+              stck_prpr: string; prdy_vrss: string; prdy_vrss_sign: string;
+              prdy_ctrt: string; acml_vol: string; acml_tr_pbmn: string;
             }>;
-          }>(
+          };
+          const blngCls = ranking_type === "trading_value" ? "3" : "0";
+          const cacheKey = `FHPST01710000:${iscd}:${blngCls}`;
+          const cacheHit = kisGetCached<VolumeBody>(cacheKey);
+          const body = cacheHit?.data ?? await kisGet<VolumeBody>(
             "/uapi/domestic-stock/v1/quotations/volume-rank",
             "FHPST01710000",
             {
@@ -102,7 +101,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
               fid_cond_scr_div_code: "20171",
               fid_input_iscd: iscd,
               fid_div_cls_code: "0",
-              fid_blng_cls_code: ranking_type === "trading_value" ? "3" : "0",
+              fid_blng_cls_code: blngCls,
               fid_trgt_cls_code: "111111111",
               fid_trgt_exls_cls_code: "0000000000",
               fid_input_price_1: "",
@@ -111,6 +110,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
             },
             cfg
           );
+          if (!cacheHit) kisSetCached(cacheKey, body);
 
           let items = (body.output ?? []).map((r) => ({
             rank: Number(r.data_rank),
@@ -127,25 +127,26 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
           if (direction === "bottom") items = items.reverse();
           items = items.slice(0, limit);
 
+          const meta = cacheHit
+            ? { ...createMeta("CACHE", "volume-rank"), as_of: cacheHit.as_of, cached: true, cache_ttl_sec: CACHE_TTL_SEC }
+            : createMeta("KIS", "volume-rank");
           return jsonToolResponse(
-            successEnvelope({ ranking_type, market, items }, createMeta("KIS", "volume-rank"))
+            successEnvelope({ ranking_type, market, items }, meta)
           );
         }
 
         // ── change_rate ───────────────────────────────────────────────────────
         if (ranking_type === "change_rate") {
-          const body = await kisGet<{
+          type FluctuationBody = {
             output: Array<{
-              stck_shrn_iscd: string;
-              data_rank: string;
-              hts_kor_isnm: string;
-              stck_prpr: string;
-              prdy_vrss: string;
-              prdy_vrss_sign: string;
-              prdy_ctrt: string;
-              acml_vol: string;
+              stck_shrn_iscd: string; data_rank: string; hts_kor_isnm: string;
+              stck_prpr: string; prdy_vrss: string; prdy_vrss_sign: string;
+              prdy_ctrt: string; acml_vol: string;
             }>;
-          }>(
+          };
+          const cacheKey = `FHPST01700000:${iscd}:${direction}`;
+          const cacheHit = kisGetCached<FluctuationBody>(cacheKey);
+          const body = cacheHit?.data ?? await kisGet<FluctuationBody>(
             "/uapi/domestic-stock/v1/ranking/fluctuation",
             "FHPST01700000",
             {
@@ -166,6 +167,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
             },
             cfg
           );
+          if (!cacheHit) kisSetCached(cacheKey, body);
 
           const items = (body.output ?? []).slice(0, limit).map((r) => ({
             rank: Number(r.data_rank),
@@ -178,25 +180,25 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
             volume: Number(r.acml_vol),
           }));
 
+          const meta = cacheHit
+            ? { ...createMeta("CACHE", "fluctuation"), as_of: cacheHit.as_of, cached: true, cache_ttl_sec: CACHE_TTL_SEC }
+            : createMeta("KIS", "fluctuation");
           return jsonToolResponse(
-            successEnvelope({ ranking_type, market, items }, createMeta("KIS", "fluctuation"))
+            successEnvelope({ ranking_type, market, items }, meta)
           );
         }
 
         // ── market_cap ────────────────────────────────────────────────────────
-        const body = await kisGet<{
+        type MarketCapBody = {
           output: Array<{
-            mksc_shrn_iscd: string;
-            data_rank: string;
-            hts_kor_isnm: string;
-            stck_prpr: string;
-            prdy_vrss: string;
-            prdy_vrss_sign: string;
-            prdy_ctrt: string;
-            acml_vol: string;
-            stck_avls: string;
+            mksc_shrn_iscd: string; data_rank: string; hts_kor_isnm: string;
+            stck_prpr: string; prdy_vrss: string; prdy_vrss_sign: string;
+            prdy_ctrt: string; acml_vol: string; stck_avls: string;
           }>;
-        }>(
+        };
+        const cacheKey = `FHPST01740000:${iscd}`;
+        const cacheHit = kisGetCached<MarketCapBody>(cacheKey);
+        const body = cacheHit?.data ?? await kisGet<MarketCapBody>(
           "/uapi/domestic-stock/v1/ranking/market-cap",
           "FHPST01740000",
           {
@@ -212,6 +214,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
           },
           cfg
         );
+        if (!cacheHit) kisSetCached(cacheKey, body);
 
         let items = (body.output ?? []).map((r) => ({
           rank: Number(r.data_rank),
@@ -228,8 +231,11 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
         if (direction === "bottom") items = items.reverse();
         items = items.slice(0, limit);
 
+        const meta = cacheHit
+          ? { ...createMeta("CACHE", "market-cap"), as_of: cacheHit.as_of, cached: true, cache_ttl_sec: CACHE_TTL_SEC }
+          : createMeta("KIS", "market-cap");
         return jsonToolResponse(
-          successEnvelope({ ranking_type, market, items }, createMeta("KIS", "market-cap"))
+          successEnvelope({ ranking_type, market, items }, meta)
         );
       } catch (err) {
         return jsonToolResponse(kisToolError(err, ranking_type), true);

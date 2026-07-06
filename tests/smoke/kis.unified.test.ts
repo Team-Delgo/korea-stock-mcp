@@ -124,11 +124,10 @@ describe.skipIf(!hasCredentials)("stock_get_quote (real)", () => {
   it("meta fields are populated", { timeout: 10000 }, async () => {
     const result = await callTool("stock_get_quote", { stock_code: "005930" });
 
-    expect(result.structuredContent.meta).toMatchObject({
-      source: "KIS",
-      source_api: "inquire-price",
-    });
-    expect(typeof result.structuredContent.meta.as_of).toBe("string");
+    const meta = result.structuredContent.meta;
+    expect(["KIS", "CACHE"]).toContain(meta.source);
+    expect(meta.source_api).toBe("inquire-price");
+    expect(typeof meta.as_of).toBe("string");
   });
 });
 
