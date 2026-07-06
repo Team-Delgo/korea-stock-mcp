@@ -30,9 +30,11 @@ export interface ErrorEnvelope {
       | "NO_DATA"
       | "UPSTREAM_ERROR"
       | "INVALID_INPUT"
-      | "NOT_IMPLEMENTED";
+      | "NOT_IMPLEMENTED"
+      | "AMBIGUOUS";
     message: string;
     retry_after_sec?: number;
+    candidates?: Array<{ stock_code: string; name: string }>;
   };
   meta: EnvelopeMeta;
 }
@@ -46,7 +48,8 @@ export const envelopeOutputSchema = {
     .object({
       code: z.string(),
       message: z.string(),
-      retry_after_sec: z.number().optional()
+      retry_after_sec: z.number().optional(),
+      candidates: z.array(z.object({ stock_code: z.string(), name: z.string() })).optional()
     })
     .optional(),
   meta: z.object({

@@ -149,7 +149,8 @@ describe("stock_get_quote", () => {
       } as unknown as Response)
     );
 
-    const result = await callTool("stock_get_quote", { stock_code: "999999" });
+    // 005930 exists in master so resolver passes; KIS then returns rt_cd:1
+    const result = await callTool("stock_get_quote", { stock_code: "005930" });
 
     expect(result.isError).toBe(true);
     expect(result.structuredContent).toMatchObject({

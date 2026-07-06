@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AppConfig } from "../config.js";
@@ -11,30 +9,7 @@ import {
   envelopeOutputSchema,
   type ErrorEnvelope,
 } from "../schemas/common.js";
-
-interface MasterRecord {
-  stock_code: string;
-  name: string;
-  market: string;
-  market_cap: number;
-}
-
-let _master: MasterRecord[] | null = null;
-
-function getMaster(): MasterRecord[] {
-  if (!_master) {
-    const p = fileURLToPath(new URL("../../data/stock_data_ko.json", import.meta.url));
-    const raw: Array<{ code: string; name: string; market: string; marketCap: number }> =
-      JSON.parse(readFileSync(p, "utf-8"));
-    _master = raw.map((r) => ({
-      stock_code: r.code,
-      name: r.name,
-      market: r.market,
-      market_cap: r.marketCap,
-    }));
-  }
-  return _master;
-}
+import { getMaster, searchStocks, type MasterRecord } from "../utils/stock-resolver.js";
 
 const READ_ONLY = {
   readOnlyHint: true,
@@ -58,6 +33,36 @@ function kisToolError(err: unknown, sourceApi: string): ErrorEnvelope {
   return { ok: false, error: { code: "UPSTREAM_ERROR", message: msg }, meta };
 }
 
+/**
+ * Resolves a name/code query to a single stock code for KIS API calls.
+ * Returns the code string on success, or a ready-to-return tool response on failure.
+ */
+function resolveKisCode(input: string): { stock_code: string } | ReturnType<typeof jsonToolResponse> {
+  const matches = searchStocks(input, getMaster());
+  const meta = createMeta("KIS", "stock-master-local");
+  if (matches.length === 0) {
+    return jsonToolResponse(
+      { ok: false, error: { code: "NO_DATA", message: `종목을 찾을 수 없습니다: ${input}` }, meta },
+      true
+    );
+  }
+  if (matches.length > 1) {
+    return jsonToolResponse(
+      {
+        ok: false,
+        error: {
+          code: "AMBIGUOUS",
+          message: `'${input}'에 해당하는 종목이 여러 개입니다. stock_code(6자리)로 다시 시도해주세요.`,
+          candidates: matches.map((r: MasterRecord) => ({ stock_code: r.stock_code, name: r.name })),
+        },
+        meta,
+      },
+      true
+    );
+  }
+  return { stock_code: matches[0].stock_code };
+}
+
 export function registerStockTools(server: McpServer, cfg: AppConfig) {
   // ── resolve_stock ──────────────────────────────────────────────────────────
 
@@ -65,7 +70,7 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     "resolve_stock",
     {
       title: "Resolve Stock",
-      description: "Resolve a Korean stock name or code to KIS stock_code. corp_code is null until DART integration.",
+      description: "Resolve a Korean stock name, English name, choseong (초성), or abbreviation to KIS stock_code. corp_code is null until DART integration.",
       inputSchema: {
         query: z.string().min(1),
         market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
@@ -76,28 +81,14 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     },
     async ({ query, market, limit }) => {
       const records = getMaster();
-      const q = query.trim();
       const pool = market === "ALL" ? records : records.filter((r) => r.market === market);
-
-      const exactCode = pool.find((r) => r.stock_code === q);
-      if (exactCode) {
-        return jsonToolResponse(
-          successEnvelope(
-            { matches: [{ stock_code: exactCode.stock_code, name: exactCode.name, market: exactCode.market, corp_code: null }] },
-            createMeta("KIS", "stock-master-local")
-          )
-        );
-      }
-
-      const lower = q.toLowerCase();
-      const matches = pool
-        .filter((r) => r.name.toLowerCase().includes(lower))
+      const matches = searchStocks(query.trim(), pool)
         .slice(0, limit)
         .map((r) => ({ stock_code: r.stock_code, name: r.name, market: r.market, corp_code: null }));
 
       if (matches.length === 0) {
         return jsonToolResponse(
-          { ok: false, error: { code: "NO_DATA", message: `No stock found for: ${q}` }, meta: createMeta("KIS", "stock-master-local") },
+          { ok: false, error: { code: "NO_DATA", message: `No stock found for: ${query.trim()}` }, meta: createMeta("KIS", "stock-master-local") },
           true
         );
       }
@@ -141,16 +132,20 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     "stock_get_quote",
     {
       title: "Get Stock Quote",
-      description: "Get a current quote for a Korean stock through KIS.",
+      description: "Get a current quote for a Korean stock. Accepts a 6-digit stock code or a stock name (Korean/English, choseong, or abbreviation).",
       inputSchema: {
-        stock_code: z.string().regex(/^\d{6}$/),
+        stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명 (예: 005930, 삼성전자, ㅅㅅㅈㅈ, 삼전)"),
         market_div_code: z.string().default("J"),
         include_extended: z.boolean().default(true),
       },
       outputSchema: envelopeOutputSchema,
       annotations: READ_ONLY,
     },
-    async ({ stock_code, market_div_code }) => {
+    async ({ stock_code: input, market_div_code }) => {
+      const resolved = resolveKisCode(input);
+      if (!("stock_code" in resolved)) return resolved;
+      const stock_code = resolved.stock_code;
+
       try {
         const body = await kisGet<{
           output: {
@@ -215,16 +210,20 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     "stock_get_orderbook",
     {
       title: "Get Stock Orderbook",
-      description: "Get bid/ask orderbook and expected execution data for a stock.",
+      description: "Get bid/ask orderbook and expected execution data. Accepts a 6-digit stock code or a stock name.",
       inputSchema: {
-        stock_code: z.string().regex(/^\d{6}$/),
+        stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명"),
         market_div_code: z.string().default("J"),
         depth: z.number().int().positive().max(10).default(10),
       },
       outputSchema: envelopeOutputSchema,
       annotations: READ_ONLY,
     },
-    async ({ stock_code, market_div_code, depth }) => {
+    async ({ stock_code: input, market_div_code, depth }) => {
+      const resolved = resolveKisCode(input);
+      if (!("stock_code" in resolved)) return resolved;
+      const stock_code = resolved.stock_code;
+
       try {
         const body = await kisGet<{
           output1: {
@@ -272,10 +271,10 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
 
         const asks = askLevels.slice(0, n)
           .map(({ p, q }) => ({ price: Number(p), quantity: Number(q) }))
-          .filter(a => a.price > 0);
+          .filter((a) => a.price > 0);
         const bids = bidLevels.slice(0, n)
           .map(({ p, q }) => ({ price: Number(p), quantity: Number(q) }))
-          .filter(b => b.price > 0);
+          .filter((b) => b.price > 0);
 
         return jsonToolResponse(
           successEnvelope(
@@ -305,9 +304,9 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     {
       title: "Get Stock Price History",
       description:
-        "Get daily, weekly, monthly, or yearly OHLCV history for a stock. Max 100 records per request (KIS API limit).",
+        "Get daily, weekly, monthly, or yearly OHLCV history. Accepts a 6-digit stock code or a stock name. Max 100 records per request (KIS API limit).",
       inputSchema: {
-        stock_code: z.string().regex(/^\d{6}$/),
+        stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명"),
         period: z.enum(["D", "W", "M", "Y"]).default("D"),
         start_date: z.string().optional(),
         end_date: z.string().optional(),
@@ -317,7 +316,11 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
       outputSchema: envelopeOutputSchema,
       annotations: READ_ONLY,
     },
-    async ({ stock_code, period, start_date, end_date, adjusted, limit }) => {
+    async ({ stock_code: input, period, start_date, end_date, adjusted, limit }) => {
+      const resolved = resolveKisCode(input);
+      if (!("stock_code" in resolved)) return resolved;
+      const stock_code = resolved.stock_code;
+
       try {
         const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
         const endDate = (end_date ?? today).replace(/-/g, "");
