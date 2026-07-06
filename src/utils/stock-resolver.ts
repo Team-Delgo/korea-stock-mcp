@@ -55,7 +55,13 @@ function syllableSubsequence(text: string, abbr: string): boolean {
  * Stops at the first level that yields any result.
  * Callers decide whether multiple results are "ambiguous".
  */
-export function searchStocks(query: string, records: MasterRecord[]): MasterRecord[] {
+export interface SearchableRecord {
+  stock_code: string;
+  name: string;
+  name_en?: string;
+}
+
+export function searchStocks<T extends SearchableRecord>(query: string, records: T[]): T[] {
   const q = query.trim();
   if (!q) return [];
 
@@ -68,16 +74,16 @@ export function searchStocks(query: string, records: MasterRecord[]): MasterReco
   const exactKo = records.filter((r) => r.name === q);
   if (exactKo.length > 0) return exactKo;
 
-  const exactEn = records.filter((r) => r.name_en.toLowerCase() === qLower);
+  const exactEn = records.filter((r) => (r.name_en ?? "").toLowerCase() === qLower);
   if (exactEn.length > 0) return exactEn;
 
   const prefix = records.filter(
-    (r) => r.name.startsWith(q) || r.name_en.toLowerCase().startsWith(qLower)
+    (r) => r.name.startsWith(q) || (r.name_en ?? "").toLowerCase().startsWith(qLower)
   );
   if (prefix.length > 0) return prefix;
 
   const sub = records.filter(
-    (r) => r.name.includes(q) || r.name_en.toLowerCase().includes(qLower)
+    (r) => r.name.includes(q) || (r.name_en ?? "").toLowerCase().includes(qLower)
   );
   if (sub.length > 0) return sub;
 
