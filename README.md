@@ -7,6 +7,7 @@ The current implementation is mostly a tool skeleton. KIS integrations and most 
 Korean docs:
 
 - Railway deployment guide: `docs/RAILWAY_DEPLOY_KO.md`
+- PlayMCP container registry guide: `docs/PLAYMCP_CONTAINER_REGISTRY_KO.md`
 - Handoff for KIS/DART implementers: `docs/HANDOFF_KO.md`
 - Development conventions: `docs/CONVENTIONS_KO.md`
 - MCP server operating baseline: `docs/MCP_BEST_PRACTICES_KO.md`

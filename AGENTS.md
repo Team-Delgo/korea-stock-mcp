@@ -51,10 +51,15 @@ npm.cmd run test
 npm.cmd run build
 ```
 
+컨테이너 배포 관련 파일을 바꾼 경우 Docker가 설치된 환경에서 아래도 확인합니다.
+
+```powershell
+docker build -t korea-stock-mcp:local .
+```
+
 ## Git 규칙
 
 - 의미 있는 작업 단위마다 커밋합니다.
 - 커밋 메시지는 짧은 영어 명령형을 사용합니다.
 - 예: `Harden MCP HTTP transport`, `Document implementation conventions`
 - 사용자가 명시적으로 요청하기 전에는 외부 API secret을 커밋하지 않습니다.
-
