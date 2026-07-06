@@ -202,6 +202,84 @@ describe.skipIf(!hasCredentials)("stock_get_price_history (real)", () => {
   });
 });
 
+// ── resolve_etf ───────────────────────────────────────────────────────────────
+
+describe("resolve_etf (real)", () => {
+  it("returns matches from local ETF master data for KODEX 200", async () => {
+    const result = await callTool("resolve_etf", { query: "KODEX 200" });
+
+    expectOk(result);
+    expect(result.structuredContent.data.matches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ stock_code: "069500", name: "KODEX 200" })])
+    );
+  });
+});
+
+// ── etf_get_quote ─────────────────────────────────────────────────────────────
+
+describe.skipIf(!hasCredentials)("etf_get_quote (real)", () => {
+  it("returns ok:true envelope for KODEX 200 (069500)", { timeout: 10000 }, async () => {
+    const result = await callTool("etf_get_quote", { stock_code: "069500" });
+
+    expectOk(result);
+    const data = result.structuredContent.data;
+    expect(data.stock_code).toBe("069500");
+    expect(typeof data.price).toBe("number");
+    expect(data.price).toBeGreaterThan(0);
+    expect(typeof data.nav).toBe("number");
+    expect(data.nav).toBeGreaterThan(0);
+    expect(typeof data.tracking_error_rate).toBe("number");
+    expect(typeof data.premium_discount_rate).toBe("number");
+  });
+
+  it("resolves ETF name to stock_code before calling KIS", { timeout: 10000 }, async () => {
+    const result = await callTool("etf_get_quote", { stock_code: "KODEX 200" });
+
+    expectOk(result);
+    expect(result.structuredContent.data.stock_code).toBe("069500");
+  });
+
+  it("meta fields are populated", { timeout: 10000 }, async () => {
+    const result = await callTool("etf_get_quote", { stock_code: "069500" });
+
+    const meta = result.structuredContent.meta;
+    expect(["KIS", "CACHE"]).toContain(meta.source);
+    expect(meta.source_api).toBe("etfetn-inquire-price");
+    expect(typeof meta.as_of).toBe("string");
+  });
+});
+
+// ── etf_get_holdings ──────────────────────────────────────────────────────────
+
+describe.skipIf(!hasCredentials)("etf_get_holdings (real)", () => {
+  it("returns constituent holdings sorted by weight for KODEX 200", { timeout: 10000 }, async () => {
+    const result = await callTool("etf_get_holdings", { stock_code: "069500", limit: 10 });
+
+    expectOk(result);
+    const data = result.structuredContent.data;
+    expect(data.stock_code).toBe("069500");
+    expect(typeof data.nav).toBe("number");
+    expect(Array.isArray(data.holdings)).toBe(true);
+    expect(data.holdings.length).toBeGreaterThan(0);
+    expect(data.holdings.length).toBeLessThanOrEqual(10);
+    expect(data.holdings[0]).toMatchObject({
+      stock_code: expect.stringMatching(/^\d{6}$/),
+      name: expect.any(String),
+      weight: expect.any(Number),
+    });
+  });
+
+  it("holdings are sorted by weight descending", { timeout: 10000 }, async () => {
+    const result = await callTool("etf_get_holdings", { stock_code: "069500", limit: 20 });
+
+    expectOk(result);
+    const holdings = result.structuredContent.data.holdings as { weight: number }[];
+    for (let i = 1; i < holdings.length; i++) {
+      expect(holdings[i - 1].weight).toBeGreaterThanOrEqual(holdings[i].weight);
+    }
+  });
+});
+
 // ── market_get_movers — real mode only ───────────────────────────────────────
 
 describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-mode only)", () => {

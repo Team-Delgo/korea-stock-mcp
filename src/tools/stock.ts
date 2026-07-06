@@ -10,6 +10,7 @@ import {
   type ErrorEnvelope,
 } from "../schemas/common.js";
 import { getMaster, searchStocks, type MasterRecord } from "../utils/stock-resolver.js";
+import { getEtfMaster } from "../utils/etf-resolver.js";
 import { kisGetCached, kisSetCached, CACHE_TTL_SEC } from "../services/kis-response-cache.js";
 
 const READ_ONLY = {
@@ -64,6 +65,56 @@ function resolveKisCode(input: string): { stock_code: string } | ReturnType<type
   return { stock_code: matches[0].stock_code };
 }
 
+/**
+ * Like resolveKisCode, but falls back to the ETF master when no stock matches.
+ * inquire-daily-itemchartprice (FHKST03010100) is a market-wide chart endpoint
+ * that also works for ETF codes, unlike the stock-specific quote/orderbook TRs.
+ */
+function resolveHistoryCode(input: string): { stock_code: string } | ReturnType<typeof jsonToolResponse> {
+  const stockMatches = searchStocks(input, getMaster());
+  if (stockMatches.length === 1) return { stock_code: stockMatches[0].stock_code };
+  if (stockMatches.length > 1) {
+    return jsonToolResponse(
+      {
+        ok: false,
+        error: {
+          code: "AMBIGUOUS",
+          message: `'${input}'에 해당하는 종목이 여러 개입니다. stock_code(6자리)로 다시 시도해주세요.`,
+          candidates: stockMatches.map((r: MasterRecord) => ({ stock_code: r.stock_code, name: r.name })),
+        },
+        meta: createMeta("KIS", "stock-master-local"),
+      },
+      true
+    );
+  }
+
+  const etfMatches = searchStocks(input, getEtfMaster());
+  if (etfMatches.length === 1) return { stock_code: etfMatches[0].stock_code };
+  if (etfMatches.length > 1) {
+    return jsonToolResponse(
+      {
+        ok: false,
+        error: {
+          code: "AMBIGUOUS",
+          message: `'${input}'에 해당하는 ETF가 여러 개입니다. stock_code(6자리)로 다시 시도해주세요.`,
+          candidates: etfMatches.map((r) => ({ stock_code: r.stock_code, name: r.name })),
+        },
+        meta: createMeta("KIS", "etf-master-local"),
+      },
+      true
+    );
+  }
+
+  return jsonToolResponse(
+    {
+      ok: false,
+      error: { code: "NO_DATA", message: `종목/ETF를 찾을 수 없습니다: ${input}` },
+      meta: createMeta("KIS", "stock-master-local"),
+    },
+    true
+  );
+}
+
 export function registerStockTools(server: McpServer, cfg: AppConfig) {
   // ── resolve_stock ──────────────────────────────────────────────────────────
 
@@ -71,7 +122,7 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     "resolve_stock",
     {
       title: "종목 검색",
-      description: "종목명, 영문명, 초성, 약칭, 6자리 종목코드로 국내 상장 종목을 검색합니다.",
+      description: "종목명(한글/영문), 초성, 약칭으로 KIS 종목코드를 검색합니다. corp_code는 DART 연동 전까지 null입니다.",
       inputSchema: {
         query: z.string().min(1),
         market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
@@ -106,7 +157,7 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     "get_stock_master",
     {
       title: "종목 마스터 조회",
-      description: "로컬 종목 마스터에서 국내 상장 종목 목록과 기본 정보를 조회합니다.",
+      description: "로컬 KIS 데이터에서 국내 상장 종목 마스터 목록을 조회합니다.",
       inputSchema: {
         market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
         include_delisted: z.boolean().default(false),
@@ -133,7 +184,7 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     "stock_get_quote",
     {
       title: "주식 현재가 조회",
-      description: "종목명 또는 6자리 종목코드로 국내 주식 현재가, 등락률, 거래량, 시가총액 등 시세 정보를 조회합니다.",
+      description: "국내 주식의 현재가, 등락률, 거래량, 시가총액 등 시세 정보를 조회합니다. 6자리 종목코드 또는 종목명(한글/영문, 초성, 약칭)을 입력할 수 있습니다.",
       inputSchema: {
         stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명 (예: 005930, 삼성전자, ㅅㅅㅈㅈ, 삼전)"),
         market_div_code: z.string().default("J"),
@@ -208,7 +259,7 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     "stock_get_orderbook",
     {
       title: "주식 호가 조회",
-      description: "종목명 또는 6자리 종목코드로 매도/매수 호가와 예상체결 정보를 조회합니다.",
+      description: "매도/매수 호가 및 예상체결 정보를 조회합니다. 6자리 종목코드 또는 종목명을 입력할 수 있습니다.",
       inputSchema: {
         stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명"),
         market_div_code: z.string().default("J"),
@@ -311,9 +362,9 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
     {
       title: "주식 기간별 시세 조회",
       description:
-        "종목명 또는 6자리 종목코드로 일/주/월/년 단위 OHLCV 가격 이력을 조회합니다. 한 번에 최대 100건을 반환합니다.",
+        "일/주/월/년 단위 OHLCV 시세 이력을 조회합니다. 6자리 종목코드 또는 종목명/ETF명을 입력할 수 있습니다. 1회 요청 시 최대 100건까지 반환됩니다(KIS API 제한).",
       inputSchema: {
-        stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명"),
+        stock_code: z.string().min(1).describe("6자리 종목코드 또는 종목명/ETF명"),
         period: z.enum(["D", "W", "M", "Y"]).default("D"),
         start_date: z.string().optional(),
         end_date: z.string().optional(),
@@ -324,7 +375,7 @@ export function registerStockTools(server: McpServer, cfg: AppConfig) {
       annotations: READ_ONLY,
     },
     async ({ stock_code: input, period, start_date, end_date, adjusted, limit }) => {
-      const resolved = resolveKisCode(input);
+      const resolved = resolveHistoryCode(input);
       if (!("stock_code" in resolved)) return resolved;
       const stock_code = resolved.stock_code;
 

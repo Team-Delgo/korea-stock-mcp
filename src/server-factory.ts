@@ -11,6 +11,7 @@ import {
   validateStreamableHttpAccept
 } from "./http/protocol.js";
 import { registerDartTools } from "./tools/dart.js";
+import { registerEtfTools } from "./tools/etf.js";
 import { registerMarketTools } from "./tools/market.js";
 import { registerStockTools } from "./tools/stock.js";
 import { registerSystemTools } from "./tools/system.js";
@@ -29,6 +30,7 @@ export function createMcpServer(appConfig: AppConfig = defaultConfig) {
   );
 
   registerStockTools(server, appConfig);
+  registerEtfTools(server, appConfig);
   registerMarketTools(server, appConfig);
   registerDartTools(server);
   registerSystemTools(server, appConfig);
