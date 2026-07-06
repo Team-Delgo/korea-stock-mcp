@@ -10,6 +10,7 @@ Korean docs:
 - Handoff for KIS/DART implementers: `docs/HANDOFF_KO.md`
 - Development conventions: `docs/CONVENTIONS_KO.md`
 - MCP server operating baseline: `docs/MCP_BEST_PRACTICES_KO.md`
+- Testing guide: `docs/TESTING_KO.md`
 
 
 ## Requirements

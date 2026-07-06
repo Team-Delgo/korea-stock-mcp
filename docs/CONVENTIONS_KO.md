@@ -120,6 +120,7 @@ ALLOW_MARKET_ORDER=
 - 외부 API 호출 테스트는 실제 secret에 의존하지 않는 mock 기반으로 작성합니다.
 - PlayMCP/Inspector 수동 테스트 전에 `npm.cmd run check`를 통과시킵니다.
 - 거래/계좌 tool이 목록에 없는지 테스트로 보호합니다.
+- 자세한 테스트 절차는 `docs/TESTING_KO.md`에 유지합니다.
 
 ## 7. 문서 컨벤션
 
@@ -127,4 +128,3 @@ ALLOW_MARKET_ORDER=
 - 구현자 인수인계는 `docs/HANDOFF_KO.md`에 유지합니다.
 - Railway 배포 절차는 `docs/RAILWAY_DEPLOY_KO.md`에 유지합니다.
 - 코드 작업 규칙은 `AGENTS.md`와 이 문서에 함께 반영합니다.
-
