@@ -1,14 +1,40 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { AppConfig } from "../config.js";
 import { kisGet, KisApiError } from "../clients/kis-rest.js";
-import { registerNotImplementedTool, jsonToolResponse } from "./helpers.js";
+import { jsonToolResponse } from "./helpers.js";
 import {
   createMeta,
   successEnvelope,
   envelopeOutputSchema,
   type ErrorEnvelope,
 } from "../schemas/common.js";
+
+interface MasterRecord {
+  stock_code: string;
+  name: string;
+  market: string;
+  market_cap: number;
+}
+
+let _master: MasterRecord[] | null = null;
+
+function getMaster(): MasterRecord[] {
+  if (!_master) {
+    const p = fileURLToPath(new URL("../../data/stock_data_ko.json", import.meta.url));
+    const raw: Array<{ code: string; name: string; market: string; marketCap: number }> =
+      JSON.parse(readFileSync(p, "utf-8"));
+    _master = raw.map((r) => ({
+      stock_code: r.code,
+      name: r.name,
+      market: r.market,
+      market_cap: r.marketCap,
+    }));
+  }
+  return _master;
+}
 
 const READ_ONLY = {
   readOnlyHint: true,
@@ -33,28 +59,81 @@ function kisToolError(err: unknown, sourceApi: string): ErrorEnvelope {
 }
 
 export function registerStockTools(server: McpServer, cfg: AppConfig) {
-  registerNotImplementedTool(server, {
-    name: "resolve_stock",
-    title: "Resolve Stock",
-    description:
-      "Resolve a Korean stock name or stock code to KIS stock_code and DART corp_code.",
-    inputSchema: {
-      query: z.string().min(1),
-      market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
-      limit: z.number().int().positive().max(50).default(10),
-    },
-  });
+  // ── resolve_stock ──────────────────────────────────────────────────────────
 
-  registerNotImplementedTool(server, {
-    name: "get_stock_master",
-    title: "Get Stock Master",
-    description: "List Korean listed stock master records.",
-    inputSchema: {
-      market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
-      include_delisted: z.boolean().default(false),
-      updated_after: z.string().optional(),
+  server.registerTool(
+    "resolve_stock",
+    {
+      title: "Resolve Stock",
+      description: "Resolve a Korean stock name or code to KIS stock_code. corp_code is null until DART integration.",
+      inputSchema: {
+        query: z.string().min(1),
+        market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
+        limit: z.number().int().positive().max(50).default(10),
+      },
+      outputSchema: envelopeOutputSchema,
+      annotations: READ_ONLY,
     },
-  });
+    async ({ query, market, limit }) => {
+      const records = getMaster();
+      const q = query.trim();
+      const pool = market === "ALL" ? records : records.filter((r) => r.market === market);
+
+      const exactCode = pool.find((r) => r.stock_code === q);
+      if (exactCode) {
+        return jsonToolResponse(
+          successEnvelope(
+            { matches: [{ stock_code: exactCode.stock_code, name: exactCode.name, market: exactCode.market, corp_code: null }] },
+            createMeta("KIS", "stock-master-local")
+          )
+        );
+      }
+
+      const lower = q.toLowerCase();
+      const matches = pool
+        .filter((r) => r.name.toLowerCase().includes(lower))
+        .slice(0, limit)
+        .map((r) => ({ stock_code: r.stock_code, name: r.name, market: r.market, corp_code: null }));
+
+      if (matches.length === 0) {
+        return jsonToolResponse(
+          { ok: false, error: { code: "NO_DATA", message: `No stock found for: ${q}` }, meta: createMeta("KIS", "stock-master-local") },
+          true
+        );
+      }
+
+      return jsonToolResponse(
+        successEnvelope({ matches }, createMeta("KIS", "stock-master-local"))
+      );
+    }
+  );
+
+  // ── get_stock_master ───────────────────────────────────────────────────────
+
+  server.registerTool(
+    "get_stock_master",
+    {
+      title: "Get Stock Master",
+      description: "List all Korean listed stock master records from local KIS data.",
+      inputSchema: {
+        market: z.enum(["KOSPI", "KOSDAQ", "KONEX", "ALL"]).default("ALL"),
+        include_delisted: z.boolean().default(false),
+        updated_after: z.string().optional(),
+      },
+      outputSchema: envelopeOutputSchema,
+      annotations: READ_ONLY,
+    },
+    async ({ market }) => {
+      const records = getMaster();
+      const filtered = market === "ALL" ? records : records.filter((r) => r.market === market);
+      return jsonToolResponse(
+        successEnvelope(
+          { total: filtered.length, records: filtered },
+          createMeta("KIS", "stock-master-local")
+        )
+      );
+    }
+  );
 
   // ── stock_get_quote ────────────────────────────────────────────────────────
 

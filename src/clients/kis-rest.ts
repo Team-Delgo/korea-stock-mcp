@@ -47,7 +47,7 @@ export async function kisGet<T>(
   });
 
   if (!res.ok) {
-    const errBody = await res.text().catch(() => "(unreadable)");
+    const errBody = await Promise.resolve().then(() => res.text()).catch(() => "(unreadable)");
     throw new Error(`KIS HTTP error: ${res.status} ${path} — ${errBody}`);
   }
 

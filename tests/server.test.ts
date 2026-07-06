@@ -101,7 +101,7 @@ describe("MCP HTTP server", () => {
     });
   });
 
-  it("returns NOT_IMPLEMENTED for stubbed data tools", async () => {
+  it("resolve_stock returns matches from local master data", async () => {
     const app = createExpressApp(baseConfig);
 
     const response = await request(app)
@@ -122,12 +122,13 @@ describe("MCP HTTP server", () => {
 
     const payload = parseSseJson(response.text);
 
-    expect(payload.result.isError).toBe(true);
+    expect(payload.result.isError).toBe(false);
     expect(payload.result.structuredContent).toMatchObject({
-      ok: false,
-      error: {
-        code: "NOT_IMPLEMENTED",
-        message: "This tool is registered but not implemented yet."
+      ok: true,
+      data: {
+        matches: expect.arrayContaining([
+          expect.objectContaining({ stock_code: "005930", name: "삼성전자" })
+        ])
       }
     });
   });
