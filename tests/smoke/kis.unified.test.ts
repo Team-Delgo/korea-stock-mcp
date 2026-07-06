@@ -60,6 +60,11 @@ async function callTool(name: string, args: object) {
   return parseSseJson(res.text).result;
 }
 
+function expectOk(result: { isError?: boolean; structuredContent: { error?: unknown } }) {
+  const err = result.structuredContent.error;
+  expect(result.isError, `tool returned error: ${JSON.stringify(err)}`).toBeFalsy();
+}
+
 // ── auth ─────────────────────────────────────────────────────────────────────
 
 describe.skipIf(!hasCredentials)("getKisAccessToken (real)", () => {
@@ -107,7 +112,7 @@ describe.skipIf(!hasCredentials)("stock_get_quote (real)", () => {
   it("returns ok:true envelope for 삼성전자 (005930)", { timeout: 10000 }, async () => {
     const result = await callTool("stock_get_quote", { stock_code: "005930" });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     expect(result.structuredContent).toMatchObject({ ok: true });
 
     const data = result.structuredContent.data;
@@ -138,7 +143,7 @@ describe.skipIf(!hasCredentials)("stock_get_orderbook (real)", () => {
   it("returns asks and bids arrays for 삼성전자", { timeout: 10000 }, async () => {
     const result = await callTool("stock_get_orderbook", { stock_code: "005930", depth: 5 });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     const data = result.structuredContent.data;
     expect(Array.isArray(data.asks)).toBe(true);
     expect(Array.isArray(data.bids)).toBe(true);
@@ -153,6 +158,7 @@ describe.skipIf(!hasCredentials)("stock_get_orderbook (real)", () => {
   it("total_ask_qty and total_bid_qty are positive numbers", { timeout: 10000 }, async () => {
     const result = await callTool("stock_get_orderbook", { stock_code: "005930" });
 
+    expectOk(result);
     const data = result.structuredContent.data;
     expect(data.total_ask_qty).toBeGreaterThan(0);
     expect(data.total_bid_qty).toBeGreaterThan(0);
@@ -172,7 +178,7 @@ describe.skipIf(!hasCredentials)("stock_get_price_history (real)", () => {
       end_date: "20260706",
     });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     const data = result.structuredContent.data;
     expect(data.stock_code).toBe("005930");
     expect(data.period).toBe("D");
@@ -196,7 +202,7 @@ describe.skipIf(!hasCredentials)("stock_get_price_history (real)", () => {
       end_date: "20260706",
     });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     const rows = result.structuredContent.data.rows as { high: number; low: number }[];
     for (const row of rows) {
       expect(row.high).toBeGreaterThanOrEqual(row.low);
@@ -212,7 +218,7 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
   it("volume ranking returns items with positive volume", { timeout: 10000 }, async () => {
     const result = await callTool("market_get_movers", { ranking_type: "volume", limit: 5 });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     const data = result.structuredContent.data;
     expect(data.ranking_type).toBe("volume");
     expect(Array.isArray(data.items)).toBe(true);
@@ -236,7 +242,7 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
       limit: 5,
     });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     const items = result.structuredContent.data.items as { change_rate: number }[];
     expect(items.length).toBeGreaterThan(0);
     // top gainers should have positive change_rate (unless market is down across the board)
@@ -257,8 +263,8 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
       limit: 1,
     });
 
-    expect(topResult.isError).toBeFalsy();
-    expect(bottomResult.isError).toBeFalsy();
+    expectOk(topResult);
+    expectOk(bottomResult);
     const topRate = topResult.structuredContent.data.items[0].change_rate as number;
     const bottomRate = bottomResult.structuredContent.data.items[0].change_rate as number;
     expect(topRate).toBeGreaterThanOrEqual(bottomRate);
@@ -267,7 +273,7 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
   it("market_cap ranking includes stck_avls as market_cap", { timeout: 10000 }, async () => {
     const result = await callTool("market_get_movers", { ranking_type: "market_cap", limit: 3 });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     const items = result.structuredContent.data.items as { market_cap: number }[];
     expect(items.length).toBeGreaterThan(0);
     for (const item of items) {
@@ -282,7 +288,7 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
   it("trading_value ranking uses volume-rank endpoint with FID_BLNG_CLS_CODE=3", { timeout: 10000 }, async () => {
     const result = await callTool("market_get_movers", { ranking_type: "trading_value", limit: 5 });
 
-    expect(result.isError).toBeFalsy();
+    expectOk(result);
     const items = result.structuredContent.data.items as { trading_value: number }[];
     expect(items.length).toBeGreaterThan(0);
     for (const item of items) {
