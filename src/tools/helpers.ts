@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { notImplementedEnvelope } from "../schemas/common.js";
 
@@ -8,6 +9,7 @@ interface ToolDefinition {
   title: string;
   description: string;
   inputSchema: ZodRawShape;
+  annotations?: ToolAnnotations;
 }
 
 export function jsonToolResponse(value: object, isError = false) {
@@ -29,7 +31,13 @@ export function registerNotImplementedTool(
     {
       title: definition.title,
       description: definition.description,
-      inputSchema: definition.inputSchema
+      inputSchema: definition.inputSchema,
+      annotations: definition.annotations ?? {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
     },
     ((async () => {
       return jsonToolResponse(notImplementedEnvelope(definition.name), true);

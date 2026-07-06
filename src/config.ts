@@ -9,6 +9,8 @@ export interface AppConfig {
   port: number;
   mcpEndpoint: string;
   allowedOrigins: string[];
+  allowedHosts: string[];
+  mcpBearerToken?: string;
   logLevel: string;
   cacheDbPath: string;
   kis: {
@@ -66,6 +68,8 @@ export const config: AppConfig = {
   port: readInt("PORT", 3000),
   mcpEndpoint: normalizeEndpoint(process.env.MCP_ENDPOINT ?? "/mcp"),
   allowedOrigins: readList("ALLOWED_ORIGINS"),
+  allowedHosts: readList("ALLOWED_HOSTS").map((host) => host.toLowerCase()),
+  mcpBearerToken: process.env.MCP_BEARER_TOKEN,
   logLevel: process.env.LOG_LEVEL ?? "info",
   cacheDbPath: process.env.CACHE_DB_PATH ?? "./data/kis_dart_cache.sqlite",
   kis: {
