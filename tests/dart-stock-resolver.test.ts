@@ -40,6 +40,45 @@ describe("DART stock resolver", () => {
     });
   });
 
+  it.each([
+    ["NAVER", "035420", "00266961"],
+    ["Naver", "035420", "00266961"],
+    ["naver", "035420", "00266961"],
+    ["KAKAO", "035720", "00258801"],
+    ["Kakao", "035720", "00258801"],
+    ["kakao", "035720", "00258801"]
+  ])(
+    "resolves English company name %s case-insensitively",
+    async (companyName, stockCode, corpCode) => {
+      setDartCorpCodeCacheForTest([
+        {
+          corpCode: "00266961",
+          corpName: "NAVER",
+          stockCode: "035420",
+          modifyDate: "20240101"
+        },
+        {
+          corpCode: "00258801",
+          corpName: "카카오",
+          stockCode: "035720",
+          modifyDate: "20240101"
+        }
+      ]);
+
+      const result = await resolveDartCompany({ companyName });
+
+      expect(result).toMatchObject({
+        ok: true,
+        company: {
+          companyName: companyName.toUpperCase(),
+          stockCode,
+          corpCode,
+          market: "KOSPI"
+        }
+      });
+    }
+  );
+
   it("resolves supported stock codes without requiring a company name", async () => {
     setDartCorpCodeCacheForTest([]);
 

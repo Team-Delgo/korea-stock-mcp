@@ -6,6 +6,5 @@ export const DEFAULT_MCP_PROTOCOL_VERSION = "2025-03-26";
 
 export const STUBBED_DATA_TOOLS = [
   "dart_search_filings",
-  "dart_get_company_overview",
   "analysis_get_stock_snapshot"
 ] as const;
