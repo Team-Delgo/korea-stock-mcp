@@ -13,6 +13,5 @@ export const STUBBED_DATA_TOOLS = [
   "market_get_movers",
   "dart_search_filings",
   "dart_get_company_overview",
-  "dart_get_financial_statement",
   "analysis_get_stock_snapshot"
 ] as const;
