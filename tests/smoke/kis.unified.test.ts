@@ -9,7 +9,7 @@
  *   KIS_APP_KEY=... KIS_APP_SECRET=... KIS_ENV=real npx vitest run tests/kis.unified.test.ts --reporter=verbose
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import request from "supertest";
 import type { AppConfig } from "../../src/config.js";
 import type { KisEnv } from "../../src/config.js";
@@ -42,6 +42,9 @@ const cfg: AppConfig = {
   dart: { baseUrl: "https://opendart.fss.or.kr/api" },
 };
 
+// Clear token cache once at suite start — KIS rate-limits token issuance to 1/min
+beforeAll(() => clearKisTokenCache());
+
 const streamableHttpAccept = "application/json, text/event-stream";
 
 function parseSseJson(text: string) {
@@ -68,8 +71,6 @@ function expectOk(result: { isError?: boolean; structuredContent: { error?: unkn
 // ── auth ─────────────────────────────────────────────────────────────────────
 
 describe.skipIf(!hasCredentials)("getKisAccessToken (real)", () => {
-  beforeAll(() => clearKisTokenCache());
-
   it("returns a non-empty access_token string", { timeout: 10000 }, async () => {
     const token = await getKisAccessToken(cfg);
 
@@ -88,8 +89,6 @@ describe.skipIf(!hasCredentials)("getKisAccessToken (real)", () => {
 // ── kisGet raw ────────────────────────────────────────────────────────────────
 
 describe.skipIf(!hasCredentials)("kisGet (real)", () => {
-  beforeAll(() => clearKisTokenCache());
-
   it("returns raw KIS response with rt_cd=0 for 삼성전자 quote", { timeout: 10000 }, async () => {
     const body = await kisGet<{ rt_cd: string; output: { stck_prpr: string } }>(
       "/uapi/domestic-stock/v1/quotations/inquire-price",
@@ -107,8 +106,6 @@ describe.skipIf(!hasCredentials)("kisGet (real)", () => {
 // ── stock_get_quote ───────────────────────────────────────────────────────────
 
 describe.skipIf(!hasCredentials)("stock_get_quote (real)", () => {
-  beforeAll(() => clearKisTokenCache());
-
   it("returns ok:true envelope for 삼성전자 (005930)", { timeout: 10000 }, async () => {
     const result = await callTool("stock_get_quote", { stock_code: "005930" });
 
@@ -138,8 +135,6 @@ describe.skipIf(!hasCredentials)("stock_get_quote (real)", () => {
 // ── stock_get_orderbook ───────────────────────────────────────────────────────
 
 describe.skipIf(!hasCredentials)("stock_get_orderbook (real)", () => {
-  beforeAll(() => clearKisTokenCache());
-
   it("returns asks and bids arrays for 삼성전자", { timeout: 10000 }, async () => {
     const result = await callTool("stock_get_orderbook", { stock_code: "005930", depth: 5 });
 
@@ -168,8 +163,6 @@ describe.skipIf(!hasCredentials)("stock_get_orderbook (real)", () => {
 // ── stock_get_price_history ───────────────────────────────────────────────────
 
 describe.skipIf(!hasCredentials)("stock_get_price_history (real)", () => {
-  beforeAll(() => clearKisTokenCache());
-
   it("returns OHLCV rows for 삼성전자 daily", { timeout: 10000 }, async () => {
     const result = await callTool("stock_get_price_history", {
       stock_code: "005930",
@@ -213,7 +206,8 @@ describe.skipIf(!hasCredentials)("stock_get_price_history (real)", () => {
 // ── market_get_movers — real mode only ───────────────────────────────────────
 
 describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-mode only)", () => {
-  beforeAll(() => clearKisTokenCache());
+  // KIS rate-limits to ~1 req/sec per endpoint; add breathing room between tests
+  beforeEach(async () => { await new Promise(r => setTimeout(r, 600)); });
 
   it("volume ranking returns items with positive volume", { timeout: 10000 }, async () => {
     const result = await callTool("market_get_movers", { ranking_type: "volume", limit: 5 });
@@ -250,13 +244,11 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
   });
 
   it("change_rate bottom ranking has lower change_rate than top", { timeout: 15000 }, async () => {
-    clearKisTokenCache();
     const topResult = await callTool("market_get_movers", {
       ranking_type: "change_rate",
       direction: "top",
       limit: 1,
     });
-    clearKisTokenCache();
     const bottomResult = await callTool("market_get_movers", {
       ranking_type: "change_rate",
       direction: "bottom",

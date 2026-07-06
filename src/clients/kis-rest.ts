@@ -47,7 +47,8 @@ export async function kisGet<T>(
   });
 
   if (!res.ok) {
-    throw new Error(`KIS HTTP error: ${res.status} ${path}`);
+    const errBody = await res.text().catch(() => "(unreadable)");
+    throw new Error(`KIS HTTP error: ${res.status} ${path} — ${errBody}`);
   }
 
   const body = (await res.json()) as { rt_cd?: string; msg1?: string } & T;

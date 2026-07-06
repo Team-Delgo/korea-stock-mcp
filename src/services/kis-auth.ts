@@ -32,7 +32,8 @@ export async function getKisAccessToken(cfg: AppConfig): Promise<string> {
   });
 
   if (!res.ok) {
-    throw new Error(`KIS token request failed: HTTP ${res.status}`);
+    const errBody = await res.text().catch(() => "(unreadable)");
+    throw new Error(`KIS token request failed: HTTP ${res.status} — ${errBody}`);
   }
 
   const body = (await res.json()) as {
