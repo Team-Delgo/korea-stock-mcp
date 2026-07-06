@@ -74,6 +74,9 @@ describe("MCP HTTP server", () => {
       "stock_get_quote",
       "stock_get_orderbook",
       "stock_get_price_history",
+      "market_get_index",
+      "market_get_sector",
+      "market_get_news",
       "market_get_movers",
       "dart_search_filings",
       "dart_get_company_overview",
@@ -101,7 +104,7 @@ describe("MCP HTTP server", () => {
     });
   });
 
-  it("returns NOT_IMPLEMENTED for stubbed data tools", async () => {
+  it("resolve_stock returns matches from local master data", async () => {
     const app = createExpressApp(baseConfig);
 
     const response = await request(app)
@@ -112,9 +115,9 @@ describe("MCP HTTP server", () => {
         id: 2,
         method: "tools/call",
         params: {
-          name: "stock_get_quote",
+          name: "resolve_stock",
           arguments: {
-            stock_code: "005930"
+            query: "삼성전자"
           }
         }
       })
@@ -122,12 +125,13 @@ describe("MCP HTTP server", () => {
 
     const payload = parseSseJson(response.text);
 
-    expect(payload.result.isError).toBe(true);
+    expect(payload.result.isError).toBe(false);
     expect(payload.result.structuredContent).toMatchObject({
-      ok: false,
-      error: {
-        code: "NOT_IMPLEMENTED",
-        message: "This tool is registered but not implemented yet."
+      ok: true,
+      data: {
+        matches: expect.arrayContaining([
+          expect.objectContaining({ stock_code: "005930", name: "삼성전자" })
+        ])
       }
     });
   });
