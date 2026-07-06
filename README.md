@@ -2,7 +2,7 @@
 
 Kakao PlayMCP registration skeleton for a read-only Korean stocks MCP server.
 
-The current implementation is mostly a tool skeleton. KIS integrations and most DART tools are not implemented yet, while `dart_get_financial_statement` calls the OpenDART single-company major accounts API.
+The current implementation is mostly a tool skeleton. KIS integrations and most DART tools are not implemented yet, while `dart_get_company_overview` calls the OpenDART company overview API and `dart_get_financial_statement` calls the OpenDART single-company major accounts API.
 
 Korean docs:
 
@@ -68,7 +68,29 @@ After starting the server, use MCP Inspector with Streamable HTTP and connect to
 http://127.0.0.1:3000/mcp
 ```
 
-You should see the tools listed above. Calling stubbed data tools returns `NOT_IMPLEMENTED`; `system_health` returns basic server status.
+You should see the tools listed above. Calling stubbed data tools returns `NOT_IMPLEMENTED`; implemented DART tools require `DART_API_KEY`; `system_health` returns basic server status.
+
+## DART Company Overview Example
+
+Set `DART_API_KEY` in `.env`, start the server, and call `dart_get_company_overview` through an MCP client.
+
+Example arguments:
+
+```json
+{
+  "companyName": "삼성전자"
+}
+```
+
+You can also use a supported stock code:
+
+```json
+{
+  "stockCode": "005930"
+}
+```
+
+The tool resolves `companyName` or `stockCode` to an OpenDART `corp_code`, calls `company.json`, and returns normalized company overview fields in the common envelope.
 
 ## DART Financial Statement Example
 
