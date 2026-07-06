@@ -45,6 +45,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Validate runtime secret
+        if: github.event_name != 'pull_request'
+        env:
+          RUNTIME_ENV: ${{ secrets.PLAYMCP_RUNTIME_ENV }}
+        shell: bash
+        run: |
+          if [ -z "$RUNTIME_ENV" ]; then
+            echo "::error::PLAYMCP_RUNTIME_ENV secret is missing or empty."
+            exit 1
+          fi
+
+          missing=0
+          for key in KIS_APP_KEY KIS_APP_SECRET KIS_ENV DART_API_KEY; do
+            if ! grep -q "^${key}=" <<< "$RUNTIME_ENV"; then
+              echo "::error::PLAYMCP_RUNTIME_ENV is missing ${key}=."
+              missing=1
+            fi
+          done
+
+          exit "$missing"
+
       - name: Build and optionally push
         uses: docker/build-push-action@v6
         with:
@@ -54,7 +75,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             RUNTIME_ENV_CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
+            REQUIRE_RUNTIME_ENV=${{ github.event_name != 'pull_request' }}
           secrets: |
-            runtime_env=${{ secrets.PLAYMCP_RUNTIME_ENV }}
+            "runtime_env=${{ secrets.PLAYMCP_RUNTIME_ENV }}"
           cache-from: type=gha
           cache-to: type=gha,mode=max

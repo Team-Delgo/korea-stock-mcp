@@ -10,7 +10,6 @@ import {
   validateMcpProtocolVersion,
   validateStreamableHttpAccept
 } from "./http/protocol.js";
-import { registerAnalysisTools } from "./tools/analysis.js";
 import { registerDartTools } from "./tools/dart.js";
 import { registerEtfTools } from "./tools/etf.js";
 import { registerMarketTools } from "./tools/market.js";
@@ -34,7 +33,6 @@ export function createMcpServer(appConfig: AppConfig = defaultConfig) {
   registerEtfTools(server, appConfig);
   registerMarketTools(server, appConfig);
   registerDartTools(server);
-  registerAnalysisTools(server);
   registerSystemTools(server, appConfig);
 
   return server;

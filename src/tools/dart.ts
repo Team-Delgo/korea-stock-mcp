@@ -9,7 +9,7 @@ import {
 } from "../clients/dart.js";
 import { createMeta, envelopeOutputSchema, successEnvelope } from "../schemas/common.js";
 import { resolveDartCompany } from "../services/dart-stock-resolver.js";
-import { jsonToolResponse, registerNotImplementedTool } from "./helpers.js";
+import { jsonToolResponse } from "./helpers.js";
 
 const dartFinancialStatementInputSchema = {
   companyName: z.string().min(1).optional(),
@@ -46,29 +46,11 @@ const TARGET_ACCOUNT_ALIASES = {
 type TargetAccountKey = keyof typeof TARGET_ACCOUNT_ALIASES;
 
 export function registerDartTools(server: McpServer) {
-  registerNotImplementedTool(server, {
-    name: "dart_search_filings",
-    title: "Search DART Filings",
-    description: "Search DART disclosures by corporation, stock, date, and type.",
-    inputSchema: {
-      corp_code: z.string().optional(),
-      stock_code: z.string().regex(/^\d{6}$/).optional(),
-      start_date: z.string().optional(),
-      end_date: z.string().optional(),
-      disclosure_type: z
-        .enum(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "ALL"])
-        .default("ALL"),
-      final_only: z.boolean().default(true),
-      page: z.number().int().positive().default(1),
-      page_size: z.number().int().positive().max(100).default(20)
-    }
-  });
-
   server.registerTool(
     "dart_get_company_overview",
     {
-      title: "Get DART Company Overview",
-      description: "Get company overview information from OpenDART.",
+      title: "DART 기업 개요 조회",
+      description: "종목명 또는 6자리 종목코드로 OpenDART 기업 개황 정보를 조회합니다.",
       inputSchema: dartCompanyOverviewInputSchema,
       outputSchema: envelopeOutputSchema,
       annotations: {
@@ -134,8 +116,8 @@ export function registerDartTools(server: McpServer) {
   server.registerTool(
     "dart_get_financial_statement",
     {
-      title: "Get DART Financial Statement",
-      description: "Get major financial statement accounts from OpenDART.",
+      title: "DART 주요 재무제표 조회",
+      description: "종목명 또는 6자리 종목코드로 OpenDART 단일회사 주요 재무계정 정보를 조회합니다.",
       inputSchema: dartFinancialStatementInputSchema,
       outputSchema: envelopeOutputSchema,
       annotations: {
