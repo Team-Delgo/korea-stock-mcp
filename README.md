@@ -49,11 +49,12 @@ Registered data tools:
 - `stock_get_quote`
 - `stock_get_orderbook`
 - `stock_get_price_history`
+- `market_get_index`
+- `market_get_sector`
+- `market_get_news`
 - `market_get_movers`
-- `dart_search_filings`
 - `dart_get_company_overview`
 - `dart_get_financial_statement`
-- `analysis_get_stock_snapshot`
 
 Registered system tool:
 
@@ -69,7 +70,7 @@ After starting the server, use MCP Inspector with Streamable HTTP and connect to
 http://127.0.0.1:3000/mcp
 ```
 
-You should see the tools listed above. Calling stubbed data tools returns `NOT_IMPLEMENTED`; implemented DART tools require `DART_API_KEY`; `system_health` returns basic server status.
+You should see the tools listed above. KIS tools require KIS credentials, DART tools require `DART_API_KEY`, and `system_health` returns basic server status.
 
 ## DART Company Overview Example
 

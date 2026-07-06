@@ -12,8 +12,8 @@ export function registerSystemTools(
   server.registerTool(
     "system_health",
     {
-      title: "System Health",
-      description: "Return basic server health and configuration status.",
+      title: "서버 상태 확인",
+      description: "MCP 서버 상태, 버전, KIS/DART 설정 여부를 확인합니다.",
       inputSchema: {},
       outputSchema: envelopeOutputSchema,
       annotations: {

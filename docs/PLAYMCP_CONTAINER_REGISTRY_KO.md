@@ -130,7 +130,6 @@ MCP Inspector 또는 PlayMCP tool 목록에서 아래가 보여야 합니다.
 
 - `resolve_stock`
 - `stock_get_quote`
-- `dart_search_filings`
 - `dart_get_company_overview`
 - `dart_get_financial_statement`
 - `system_health`
