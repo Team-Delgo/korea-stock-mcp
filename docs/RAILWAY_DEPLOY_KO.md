@@ -76,17 +76,25 @@ DART_API_KEY=<DART API 키>
 선택 또는 기본값 사용 가능:
 
 ```text
+ALLOWED_ORIGINS=
+ALLOWED_HOSTS=
+MCP_BEARER_TOKEN=
 KIS_BASE_URL_REAL=https://openapi.koreainvestment.com:9443
 KIS_BASE_URL_PAPER=https://openapivts.koreainvestment.com:29443
 DART_BASE_URL=https://opendart.fss.or.kr/api
 CACHE_DB_PATH=./data/kis_dart_cache.sqlite
 LOG_LEVEL=info
-ALLOWED_ORIGINS=
 ```
 
 Railway는 `PORT`를 자동으로 주입합니다. 직접 `PORT`를 고정하지 않는 것을 권장합니다.
 
 `HOST`는 `railway.json`의 start command에서 `0.0.0.0`으로 지정하므로 Variables에 따로 넣지 않아도 됩니다.
+
+보안 참고:
+
+- `MCP_BEARER_TOKEN`을 설정하면 PlayMCP 또는 Inspector 요청에 `Authorization: Bearer <token>`이 필요합니다.
+- PlayMCP가 `Origin` header를 보내며 연결에 실패하면 Railway 로그의 origin 값을 확인해 `ALLOWED_ORIGINS`에 정확히 추가합니다.
+- 처음 연결 테스트에서는 `ALLOWED_ORIGINS`를 비워두고 health/MCP 연결을 먼저 확인한 뒤, 필요한 경우 제한을 추가합니다.
 
 ## 4. Railway public domain 만들기
 
@@ -187,8 +195,8 @@ railway up
 2. PlayMCP 등록 주소가 `/mcp`로 끝나는지 확인
 3. Railway 로그에 MCP request 오류가 있는지 확인
 4. `ALLOWED_ORIGINS`를 비워둔 상태로 먼저 테스트
+5. `MCP_BEARER_TOKEN`을 설정했다면 PlayMCP 쪽에 같은 bearer token을 전달하는 설정이 있는지 확인
 
 ### KIS/DART tool이 동작하지 않음
 
 현재는 정상입니다. 아직 골격 단계라 데이터 tool은 `NOT_IMPLEMENTED`를 반환합니다.
-

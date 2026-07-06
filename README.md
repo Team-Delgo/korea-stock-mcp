@@ -6,8 +6,10 @@ The current implementation intentionally exposes tool skeletons only. KIS and DA
 
 Korean docs:
 
-- Handoff for KIS/DART implementers: `docs/HANDOFF_KO.md`
 - Railway deployment guide: `docs/RAILWAY_DEPLOY_KO.md`
+- Handoff for KIS/DART implementers: `docs/HANDOFF_KO.md`
+- Development conventions: `docs/CONVENTIONS_KO.md`
+- MCP server operating baseline: `docs/MCP_BEST_PRACTICES_KO.md`
 
 
 ## Requirements
@@ -71,6 +73,8 @@ You should see the tools listed above. Calling any data tool returns `NOT_IMPLEM
 
 ```powershell
 npm.cmd run dev
+npm.cmd run check
+npm.cmd run test
 npm.cmd run build
 npm.cmd run typecheck
 ```
