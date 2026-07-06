@@ -273,30 +273,107 @@ KIS 에러 상황별 `error.code` 매핑:
 
 ### `market_get_movers`
 
-`ranking_type`별로 KIS 엔드포인트와 tr_id가 다릅니다.
+**모든 ranking API는 모의투자 미지원입니다.** paper 환경에서 호출하면 KIS가 에러를 반환합니다.
 
-| ranking_type | 엔드포인트 | tr_id |
-|---|---|---|
-| `volume` | `/uapi/domestic-stock/v1/ranking/volume` | `FHPST01710000` |
-| `change_rate` | `/uapi/domestic-stock/v1/ranking/fluctuation` | `FHPST01740000` |
-| `market_cap` | `/uapi/domestic-stock/v1/ranking/market-cap` | `FHPST01750000` |
-| `trading_value` | `/uapi/domestic-stock/v1/ranking/trading-value` | `FHPST01760000` |
+`ranking_type`별 엔드포인트·tr_id (xlsx `[국내주식] 순위분석.xlsx` 검증 완료):
 
-`dividend_yield`, `short_sale`, `credit_balance`, `new_high_low`는 KIS API 확인 후 추가합니다.
-확인 전에는 `NOT_IMPLEMENTED` envelope를 반환합니다.
+| ranking_type | 엔드포인트 | tr_id | 비고 |
+|---|---|---|---|
+| `volume` | `/uapi/domestic-stock/v1/quotations/volume-rank` | `FHPST01710000` | `FID_BLNG_CLS_CODE=0` |
+| `trading_value` | `/uapi/domestic-stock/v1/quotations/volume-rank` | `FHPST01710000` | `FID_BLNG_CLS_CODE=3` (거래금액순) |
+| `change_rate` | `/uapi/domestic-stock/v1/ranking/fluctuation` | `FHPST01700000` | |
+| `market_cap` | `/uapi/domestic-stock/v1/ranking/market-cap` | `FHPST01740000` | |
 
-응답 정규화:
+`trading_value`는 별도 API가 없으며 `volume-rank`의 `FID_BLNG_CLS_CODE=3`으로 구현합니다.
+`dividend_yield`, `short_sale`, `credit_balance`, `new_high_low`는 `NOT_IMPLEMENTED` envelope를 반환합니다.
 
-```ts
-{
-  rank: number,
-  stock_code: string,
-  name: string,
-  price: number,
-  change_rate: number,
-  volume: number
-}
+#### Request Query Params
+
+**volume / trading_value** (`/quotations/volume-rank`):
 ```
+fid_cond_mrkt_div_code: "J"
+fid_cond_scr_div_code:  "20171"
+fid_input_iscd:         "0000"(전체) / "0001"(코스피) / "1001"(코스닥)
+fid_div_cls_code:       "0"
+fid_blng_cls_code:      "0"(거래량순) / "3"(거래금액순)
+fid_trgt_cls_code:      "111111111"
+fid_trgt_exls_cls_code: "0000000000"
+fid_input_price_1/2:    ""
+fid_vol_cnt:            ""
+```
+
+**change_rate** (`/ranking/fluctuation`):
+```
+fid_cond_mrkt_div_code:  "J"
+fid_cond_scr_div_code:   "20170"
+fid_input_iscd:          시장코드
+fid_rank_sort_cls_code:  "0"(상승율순) / "1"(하락율순)  ← direction 매핑
+fid_input_cnt_1:         "0"
+fid_prc_cls_code:        "0"
+fid_input_price_1/2:     ""
+fid_vol_cnt:             ""
+fid_trgt_cls_code:       "0"
+fid_trgt_exls_cls_code:  "0"
+fid_div_cls_code:        "0"
+fid_rsfl_rate1/2:        ""
+```
+
+**market_cap** (`/ranking/market-cap`):
+```
+fid_cond_mrkt_div_code:  "J"
+fid_cond_scr_div_code:   "20174"
+fid_div_cls_code:        "0"
+fid_input_iscd:          시장코드
+fid_trgt_cls_code:       "0"
+fid_trgt_exls_cls_code:  "0"
+fid_input_price_1/2:     ""
+fid_vol_cnt:             ""
+```
+
+#### Response 필드 매핑
+
+**volume / trading_value** output 배열:
+```
+mksc_shrn_iscd → stock_code
+data_rank      → rank
+hts_kor_isnm   → name
+stck_prpr      → price
+prdy_vrss      → change
+prdy_vrss_sign → change_sign
+prdy_ctrt      → change_rate
+acml_vol       → volume
+acml_tr_pbmn   → trading_value
+```
+
+**change_rate** output 배열 (종목코드 필드명 주의):
+```
+stck_shrn_iscd → stock_code  ← mksc_shrn_iscd가 아님
+data_rank      → rank
+hts_kor_isnm   → name
+stck_prpr      → price
+prdy_vrss      → change
+prdy_vrss_sign → change_sign
+prdy_ctrt      → change_rate
+acml_vol       → volume
+```
+
+**market_cap** output 배열:
+```
+mksc_shrn_iscd    → stock_code
+data_rank         → rank
+hts_kor_isnm      → name
+stck_prpr         → price
+prdy_vrss         → change
+prdy_vrss_sign    → change_sign
+prdy_ctrt         → change_rate
+acml_vol          → volume
+stck_avls         → market_cap
+```
+
+#### 제약사항
+
+- API 최대 30건 반환 (다음 조회 불가). limit 최대값: 30.
+- `direction=bottom`: `change_rate`는 `fid_rank_sort_cls_code=1`(하락율순) 네이티브 지원. 그 외는 반환 배열 역순 처리.
 
 ---
 

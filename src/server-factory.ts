@@ -30,7 +30,7 @@ export function createMcpServer(appConfig: AppConfig = defaultConfig) {
   );
 
   registerStockTools(server, appConfig);
-  registerMarketTools(server);
+  registerMarketTools(server, appConfig);
   registerDartTools(server);
   registerAnalysisTools(server);
   registerSystemTools(server, appConfig);
