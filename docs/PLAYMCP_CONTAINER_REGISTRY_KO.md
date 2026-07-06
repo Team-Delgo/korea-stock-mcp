@@ -50,7 +50,7 @@ image_name
 team-delgo/korea-stock-mcp
 
 image_tag
-0.1.1
+0.1.2
 
 레지스트리 TLS 검증 해제
 체크하지 않음
@@ -95,14 +95,14 @@ Dockerfile은 이 secret을 build secret으로 받아 최종 이미지에 `.env.
 ```powershell
 git checkout main
 git pull
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 태그 push 후 GitHub Actions가 성공하면 아래 이미지가 생성됩니다.
 
 ```text
-ghcr.io/team-delgo/korea-stock-mcp:0.1.1
+ghcr.io/team-delgo/korea-stock-mcp:0.1.2
 ```
 
 ## 5. 컨테이너 기본 런타임 설정
