@@ -4,7 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { AppConfig } from "./config.js";
 import { config as defaultConfig } from "./config.js";
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
-import { securityMiddleware } from "./http/security.js";
+import { applyCorsHeaders, securityMiddleware } from "./http/security.js";
 import {
   jsonRpcError,
   validateMcpProtocolVersion,
@@ -53,6 +53,11 @@ export function createExpressApp(appConfig: AppConfig = defaultConfig): Express 
       mcp_endpoint: appConfig.mcpEndpoint,
       read_only: true
     });
+  });
+
+  app.options(appConfig.mcpEndpoint, securityMiddleware(appConfig), (req, res) => {
+    applyCorsHeaders(req, res, appConfig);
+    res.status(204).send();
   });
 
   app.post(

@@ -20,7 +20,9 @@
 - 로컬 기본 host는 `127.0.0.1`입니다.
 - Railway 배포 시에만 `HOST=0.0.0.0`을 start command에서 지정합니다.
 - bearer token 인증을 선택적으로 지원합니다.
+- 허용 origin에 대해서만 CORS/preflight 응답을 제공합니다.
 - tool은 read-only annotation을 포함합니다.
+- tool은 공통 envelope `outputSchema`를 포함합니다.
 - JSON-RPC/MCP 오류는 HTTP 계층에서 명확한 상태 코드와 JSON body를 반환합니다.
 - MCP Inspector로 tool 목록과 호출 결과를 검증할 수 있게 유지합니다.
 
@@ -34,4 +36,3 @@
 - 배포 플랫폼별 secret rotation 자동화
 
 위 항목은 실제 운영 요구가 생겼을 때 별도 작업으로 추가합니다.
-

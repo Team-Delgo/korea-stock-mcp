@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
-import { notImplementedEnvelope } from "../schemas/common.js";
+import { envelopeOutputSchema, notImplementedEnvelope } from "../schemas/common.js";
 
 interface ToolDefinition {
   name: string;
@@ -32,6 +32,7 @@ export function registerNotImplementedTool(
       title: definition.title,
       description: definition.description,
       inputSchema: definition.inputSchema,
+      outputSchema: envelopeOutputSchema,
       annotations: definition.annotations ?? {
         readOnlyHint: true,
         destructiveHint: false,

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 
 export type EnvelopeSource = "KIS" | "DART" | "CACHE" | "COMPUTED";
 
@@ -37,6 +38,28 @@ export interface ErrorEnvelope {
 }
 
 export type Envelope<TData> = SuccessEnvelope<TData> | ErrorEnvelope;
+
+export const envelopeOutputSchema = {
+  ok: z.boolean(),
+  data: z.record(z.unknown()).optional(),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+      retry_after_sec: z.number().optional()
+    })
+    .optional(),
+  meta: z.object({
+    source: z.enum(["KIS", "DART", "CACHE", "COMPUTED"]),
+    source_api: z.string().optional(),
+    as_of: z.string().optional(),
+    cached: z.boolean().optional(),
+    cache_ttl_sec: z.number().optional(),
+    request_id: z.string().optional(),
+    raw_ref: z.string().optional()
+  }),
+  warnings: z.array(z.string()).optional()
+};
 
 export function createMeta(
   source: EnvelopeSource = "COMPUTED",

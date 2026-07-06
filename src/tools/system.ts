@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AppConfig } from "../config.js";
 import { config as defaultConfig } from "../config.js";
 import { SERVER_NAME, SERVER_VERSION, STUBBED_DATA_TOOLS } from "../constants.js";
-import { successEnvelope } from "../schemas/common.js";
+import { envelopeOutputSchema, successEnvelope } from "../schemas/common.js";
 import { jsonToolResponse } from "./helpers.js";
 
 export function registerSystemTools(
@@ -15,6 +15,7 @@ export function registerSystemTools(
       title: "System Health",
       description: "Return basic server health and configuration status.",
       inputSchema: {},
+      outputSchema: envelopeOutputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

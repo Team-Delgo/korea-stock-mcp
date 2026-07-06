@@ -45,8 +45,32 @@ export function hasValidBearerToken(req: Request, config: AppConfig): boolean {
   return req.header("authorization") === `Bearer ${config.mcpBearerToken}`;
 }
 
+export function applyCorsHeaders(req: Request, res: Response, config: AppConfig) {
+  const origin = req.header("origin");
+
+  if (origin && isOriginAllowed(origin, config)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, DELETE, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    [
+      "Authorization",
+      "Content-Type",
+      "Accept",
+      "MCP-Protocol-Version",
+      "Mcp-Session-Id",
+      "Last-Event-ID"
+    ].join(", ")
+  );
+}
+
 export function securityMiddleware(config: AppConfig) {
   return (req: Request, res: Response, next: NextFunction) => {
+    applyCorsHeaders(req, res, config);
+
     if (!isHostAllowed(req.header("host"), config)) {
       res.status(403).json({ error: "Host is not allowed." });
       return;

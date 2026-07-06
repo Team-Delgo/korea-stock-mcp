@@ -93,7 +93,7 @@ Railway는 `PORT`를 자동으로 주입합니다. 직접 `PORT`를 고정하지
 보안 참고:
 
 - `MCP_BEARER_TOKEN`을 설정하면 PlayMCP 또는 Inspector 요청에 `Authorization: Bearer <token>`이 필요합니다.
-- PlayMCP가 `Origin` header를 보내며 연결에 실패하면 Railway 로그의 origin 값을 확인해 `ALLOWED_ORIGINS`에 정확히 추가합니다.
+- PlayMCP가 `Origin` header 또는 browser preflight 요청을 보내며 연결에 실패하면 Railway 로그의 origin 값을 확인해 `ALLOWED_ORIGINS`에 정확히 추가합니다.
 - 처음 연결 테스트에서는 `ALLOWED_ORIGINS`를 비워두고 health/MCP 연결을 먼저 확인한 뒤, 필요한 경우 제한을 추가합니다.
 
 ## 4. Railway public domain 만들기

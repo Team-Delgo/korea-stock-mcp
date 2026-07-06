@@ -87,6 +87,18 @@ describe("MCP HTTP server", () => {
       readOnlyHint: true,
       destructiveHint: false
     });
+    expect(payload.result.tools[0].outputSchema).toMatchObject({
+      type: "object",
+      properties: {
+        ok: {
+          type: "boolean"
+        },
+        meta: {
+          type: "object"
+        }
+      },
+      required: ["ok", "meta"]
+    });
   });
 
   it("returns NOT_IMPLEMENTED for stubbed data tools", async () => {
@@ -186,5 +198,31 @@ describe("MCP HTTP server", () => {
       .expect(405);
 
     await request(app).delete("/mcp").expect(405);
+  });
+
+  it("handles MCP CORS preflight only for allowed origins", async () => {
+    const app = createExpressApp({
+      ...baseConfig,
+      allowedOrigins: ["https://playmcp.example"]
+    });
+
+    const allowed = await request(app)
+      .options("/mcp")
+      .set("Origin", "https://playmcp.example")
+      .set("Access-Control-Request-Method", "POST")
+      .expect(204);
+
+    expect(allowed.header["access-control-allow-origin"]).toBe(
+      "https://playmcp.example"
+    );
+    expect(allowed.header["access-control-allow-headers"]).toContain(
+      "MCP-Protocol-Version"
+    );
+
+    await request(app)
+      .options("/mcp")
+      .set("Origin", "https://evil.example")
+      .set("Access-Control-Request-Method", "POST")
+      .expect(403);
   });
 });

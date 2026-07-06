@@ -27,8 +27,10 @@ npm.cmd run build
 - MCP `tools/list` 목록
 - `account_*`, `order_*` tool 부재
 - read-only tool annotation
+- 공통 envelope output schema 노출
 - 미구현 데이터 tool의 `NOT_IMPLEMENTED` envelope
 - Origin 검증
+- MCP CORS preflight 검증
 - optional bearer token 검증
 - MCP protocol version 검증
 - Streamable HTTP `Accept` header 검증
@@ -67,4 +69,3 @@ URL: http://127.0.0.1:3000/mcp
 - 외부 API client는 mock HTTP 응답 기반 단위 테스트를 먼저 작성합니다.
 - 실제 API smoke test가 필요하면 별도 opt-in script로 분리합니다.
 - secret/token/API key는 테스트 실패 로그에 출력하지 않습니다.
-

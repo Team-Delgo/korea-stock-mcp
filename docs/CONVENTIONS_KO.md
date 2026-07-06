@@ -22,6 +22,7 @@
 - `Origin` header가 있으면 검증합니다.
 - `ALLOWED_ORIGINS`가 비어 있으면 loopback origin만 허용합니다.
 - PlayMCP 등 외부 브라우저 기반 host가 Origin을 보낼 경우 `ALLOWED_ORIGINS`에 정확한 origin을 추가합니다.
+- `/mcp`의 CORS preflight는 허용된 origin에만 `204`를 반환합니다.
 - `ALLOWED_HOSTS`가 설정되면 Host header도 검증합니다.
 - secret, token, API key, full request header는 로그에 출력하지 않습니다.
 
@@ -65,6 +66,7 @@ ALLOW_MARKET_ORDER=
 - 시스템: `system_*`
 - `account_*`, `order_*` prefix는 사용하지 않습니다.
 - 모든 조회 tool은 read-only annotation을 붙입니다.
+- 모든 tool은 공통 envelope `outputSchema`를 노출합니다.
 
 권장 annotation:
 
@@ -113,6 +115,8 @@ ALLOW_MARKET_ORDER=
 ```
 
 외부 API 구현 전인 tool은 반드시 `NOT_IMPLEMENTED`를 반환합니다.
+
+MCP tool result는 `structuredContent`와 JSON 문자열 `TextContent`를 함께 반환합니다. 이는 structured result의 역호환성을 위한 규칙입니다.
 
 ## 6. 테스트 컨벤션
 
