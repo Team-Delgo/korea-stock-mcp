@@ -149,29 +149,17 @@ export async function kisGet<T>(
 
 ## Step 3–4: `src/tools/stock.ts` 구현
 
-### 현재 구조 → 변경 방식
+### 함수 시그니처 변경
 
-현재 모든 툴은 `registerNotImplementedTool`로 등록되어 있습니다.
-실제 구현 시 `server.registerTool`을 직접 호출하는 방식으로 교체합니다.
+`registerStockTools`가 `AppConfig`를 인자로 받아야 합니다.
+`server-factory.ts`의 호출부도 함께 수정합니다.
 
 ```ts
 // Before
-registerNotImplementedTool(server, { name: "stock_get_quote", ... })
+export function registerStockTools(server: McpServer)
 
 // After
-server.registerTool(
-  "stock_get_quote",
-  {
-    title: "Get Stock Quote",
-    description: "...",
-    inputSchema: { ... },
-    outputSchema: envelopeOutputSchema,
-    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true }
-  },
-  async ({ stock_code }) => {
-    // KIS 호출 → 정규화 → envelope 반환
-  }
-)
+export function registerStockTools(server: McpServer, cfg: AppConfig)
 ```
 
 ### API 엔드포인트 매핑
@@ -183,18 +171,28 @@ GET /uapi/domestic-stock/v1/quotations/inquire-price
 tr_id: FHKST01010100 (실전) / VHKST01010100 (모의)
 
 필수 query params:
-  fid_cond_mrkt_div_code: J        (주식)
-  fid_input_iscd: <stock_code>     (6자리 종목코드)
+  fid_cond_mrkt_div_code: J
+  fid_input_iscd: <stock_code>
 
-주요 응답 필드 정규화:
-  stck_prpr  → price           (현재가)
-  prdy_vrss  → change          (전일 대비)
-  prdy_ctrt  → change_rate     (등락률 %)
-  acml_vol   → volume          (누적 거래량)
-  stck_oprc  → open
-  stck_hgpr  → high
-  stck_lwpr  → low
-  hts_avls   → market_cap      (시가총액, 억원)
+응답: output (단일 object). 모든 숫자 필드가 string으로 옴 → Number() 변환 필수.
+
+정규화 매핑:
+  stck_prpr        → price          (현재가)
+  prdy_vrss        → change         (전일대비)
+  prdy_vrss_sign   → change_sign    ("1"상한/"2"상승/"3"보합/"4"하락/"5"하한)
+  prdy_ctrt        → change_rate    (등락률 %)
+  acml_vol         → volume         (누적거래량)
+  acml_tr_pbmn     → trading_value  (누적거래대금)
+  stck_oprc        → open
+  stck_hgpr        → high
+  stck_lwpr        → low
+  hts_avls         → market_cap     (시가총액, 억원)
+  per              → per
+  pbr              → pbr
+  w52_hgpr         → week52_high
+  w52_lwpr         → week52_low
+  rprs_mrkt_kor_name → market       (ex. "KOSPI200")
+  bstp_kor_isnm    → sector         (업종명)
 ```
 
 #### `stock_get_orderbook`
@@ -207,11 +205,21 @@ tr_id: FHKST01010200 (실전) / VHKST01010200 (모의)
   fid_cond_mrkt_div_code: J
   fid_input_iscd: <stock_code>
 
-주요 응답 정규화:
-  askp1~10  → asks[].price (매도호가)
-  askp_rsqn1~10 → asks[].quantity
-  bidp1~10  → bids[].price (매수호가)
-  bidp_rsqn1~10 → bids[].quantity
+응답 구조: output1 (호가) + output2 (예상체결) — 두 object 모두 사용.
+
+output1 정규화:
+  aspr_acpt_hour      → timestamp      (HHMMSS)
+  askp1~10            → asks[].price   (매도호가, askp1이 최우선)
+  askp_rsqn1~10       → asks[].quantity
+  bidp1~10            → bids[].price   (매수호가, bidp1이 최우선)
+  bidp_rsqn1~10       → bids[].quantity
+  total_askp_rsqn     → total_ask_qty
+  total_bidp_rsqn     → total_bid_qty
+  price=0인 레벨은 배열에서 제외
+
+output2 정규화:
+  antc_cnpr           → expected_price  (예상체결가)
+  antc_vol            → expected_volume (예상거래량)
 ```
 
 #### `stock_get_price_history`
@@ -223,18 +231,27 @@ tr_id: FHKST03010100 (실전) / VHKST03010100 (모의)
 필수 query params:
   fid_cond_mrkt_div_code: J
   fid_input_iscd: <stock_code>
-  fid_input_date_1: <start_date YYYYMMDD>
-  fid_input_date_2: <end_date YYYYMMDD>
+  fid_input_date_1: <start YYYYMMDD>
+  fid_input_date_2: <end YYYYMMDD>   ← 최대 100건/호출 (API 제한)
   fid_period_div_code: D/W/M/Y
-  fid_org_adj_prc: 0 (수정주가) / 1 (원주가)
+  fid_org_adj_prc: 0(수정주가) / 1(원주가)
 
-응답은 output2 배열 (일별 데이터):
-  stck_bsop_date → date
-  stck_oprc → open
-  stck_hgpr → high
-  stck_lwpr → low
-  stck_clpr → close
-  acml_vol  → volume
+응답 구조: output1 (단일 요약, 무시) + output2 (배열, 사용)
+
+output2 배열 정규화:
+  stck_bsop_date  → date
+  stck_clpr       → close
+  stck_oprc       → open
+  stck_hgpr       → high
+  stck_lwpr       → low
+  acml_vol        → volume
+  acml_tr_pbmn    → trading_value
+  prdy_vrss       → change
+  prdy_vrss_sign  → change_sign
+  mod_yn          → is_adjusted  ("Y"/"N" → boolean)
+
+output2가 빈 배열이면 NO_DATA envelope 반환.
+input limit은 max 100 (API 상한과 동일).
 ```
 
 ### 오류 처리 → ErrorEnvelope 변환
@@ -246,17 +263,9 @@ KIS 에러 상황별 `error.code` 매핑:
 | `rt_cd !== "0"` (KIS 업무 오류) | `UPSTREAM_ERROR` |
 | HTTP 429 / 초당 한도 초과 | `RATE_LIMITED` |
 | 토큰 만료 (HTTP 401) | `AUTH_EXPIRED` |
-| 존재하지 않는 종목 | `INVALID_SYMBOL` |
-| 데이터 없음 (정상이나 빈 결과) | `NO_DATA` |
+| output2 빈 배열 (정상이나 빈 결과) | `NO_DATA` |
 
-```ts
-// 에러 응답 예시
-return jsonToolResponse({
-  ok: false,
-  error: { code: "UPSTREAM_ERROR", message: "KIS API 오류: " + msg },
-  meta: createMeta("KIS", "inquire-price")
-}, true)
-```
+파일 내 공통 헬퍼 `kisToolError(err, sourceApi)`로 처리합니다.
 
 ---
 

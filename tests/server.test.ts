@@ -112,9 +112,9 @@ describe("MCP HTTP server", () => {
         id: 2,
         method: "tools/call",
         params: {
-          name: "stock_get_quote",
+          name: "resolve_stock",
           arguments: {
-            stock_code: "005930"
+            query: "삼성전자"
           }
         }
       })
