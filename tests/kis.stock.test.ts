@@ -452,3 +452,411 @@ describe("stock_get_price_history", () => {
     expect(result.structuredContent.data.rows[0].is_adjusted).toBe(true);
   });
 });
+
+// ── market_get_index ─────────────────────────────────────────────────────────
+
+describe("market_get_index", () => {
+  beforeEach(() => {
+    clearKisTokenCache();
+    clearKisResponseCache();
+    vi.unstubAllGlobals();
+  });
+
+  const fakeQuoteOutput = {
+    bstp_nmix_prpr: "2850.34",
+    bstp_nmix_prdy_vrss: "12.45",
+    prdy_vrss_sign: "2",
+    bstp_nmix_prdy_ctrt: "0.44",
+    bstp_nmix_oprc: "2838.00",
+    bstp_nmix_hgpr: "2855.12",
+    bstp_nmix_lwpr: "2835.60",
+    acml_vol: "593842",
+    acml_tr_pbmn: "10221804",
+    ascn_issu_cnt: "628",
+    stnr_issu_cnt: "58",
+    down_issu_cnt: "250",
+    uplm_issu_cnt: "0",
+    lslm_issu_cnt: "0",
+    total_askp_rsqn: "24146999",
+    total_bidp_rsqn: "40450437",
+    ntby_rsqn: "16303438",
+    dryy_bstp_nmix_hgpr: "2675.80",
+    dryy_bstp_nmix_hgpr_date: "20240109",
+    dryy_bstp_nmix_lwpr: "2429.12",
+    dryy_bstp_nmix_lwpr_date: "20240118",
+  };
+
+  const fakeHistoryOutput1 = {
+    bstp_nmix_prpr: "2850.34",
+    bstp_nmix_prdy_vrss: "12.45",
+    prdy_vrss_sign: "2",
+    bstp_nmix_prdy_ctrt: "0.44",
+    bstp_nmix_oprc: "2838.00",
+    bstp_nmix_hgpr: "2855.12",
+    bstp_nmix_lwpr: "2835.60",
+    acml_vol: "593842",
+    acml_tr_pbmn: "10221804",
+    ascn_issu_cnt: "628",
+    stnr_issu_cnt: "58",
+    down_issu_cnt: "250",
+    uplm_issu_cnt: "0",
+    lslm_issu_cnt: "0",
+  };
+
+  const fakeHistoryOutput2 = [
+    {
+      stck_bsop_date: "20260706",
+      bstp_nmix_prpr: "2850.34",
+      bstp_nmix_oprc: "2838.00",
+      bstp_nmix_hgpr: "2855.12",
+      bstp_nmix_lwpr: "2835.60",
+      acml_vol: "593842",
+      acml_tr_pbmn: "10221804",
+      bstp_nmix_prdy_vrss: "12.45",
+      prdy_vrss_sign: "2",
+      bstp_nmix_prdy_ctrt: "0.44",
+    },
+    {
+      stck_bsop_date: "20260705",
+      bstp_nmix_prpr: "2837.89",
+      bstp_nmix_oprc: "2830.00",
+      bstp_nmix_hgpr: "2840.00",
+      bstp_nmix_lwpr: "2825.00",
+      acml_vol: "500000",
+      acml_tr_pbmn: "9500000",
+      bstp_nmix_prdy_vrss: "-5.00",
+      prdy_vrss_sign: "4",
+      bstp_nmix_prdy_ctrt: "-0.18",
+    },
+  ];
+
+  it("quote mode returns ok:true with normalized numeric fields", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output: fakeQuoteOutput }))
+    );
+
+    const result = await callTool("market_get_index", { index: "KOSPI", mode: "quote" });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        index: "KOSPI",
+        mode: "quote",
+        price: 2850.34,
+        change: 12.45,
+        change_sign: "2",
+        change_rate: 0.44,
+        advances: 628,
+        declines: 250,
+        unchanged: 58,
+        year_high: 2675.80,
+        year_high_date: "20240109",
+      },
+    });
+  });
+
+  it("quote mode meta.source is KIS and source_api is inquire-index-price", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output: fakeQuoteOutput }))
+    );
+
+    const result = await callTool("market_get_index", { index: "KOSPI", mode: "quote" });
+
+    expect(result.structuredContent.meta).toMatchObject({
+      source: "KIS",
+      source_api: "inquire-index-price",
+    });
+  });
+
+  it("history mode returns summary and rows array", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output1: fakeHistoryOutput1, output2: fakeHistoryOutput2 }))
+    );
+
+    const result = await callTool("market_get_index", { index: "KOSDAQ", mode: "history", period: "D" });
+
+    expect(result.isError).toBeFalsy();
+    const data = result.structuredContent.data;
+    expect(data.index).toBe("KOSDAQ");
+    expect(data.mode).toBe("history");
+    expect(data.period).toBe("D");
+    expect(Array.isArray(data.rows)).toBe(true);
+    expect(data.rows).toHaveLength(2);
+    expect(data.rows[0]).toMatchObject({
+      date: "20260706",
+      close: 2850.34,
+      open: 2838.00,
+      high: 2855.12,
+      low: 2835.60,
+      volume: 593842,
+      change: 12.45,
+      change_sign: "2",
+    });
+    expect(typeof data.summary.price).toBe("number");
+  });
+
+  it("history limit param slices rows", async () => {
+    const manyRows = Array.from({ length: 5 }, (_, i) => ({
+      stck_bsop_date: `2026070${i + 1}`,
+      bstp_nmix_prpr: "2850.00",
+      bstp_nmix_oprc: "2840.00",
+      bstp_nmix_hgpr: "2860.00",
+      bstp_nmix_lwpr: "2830.00",
+      acml_vol: "500000",
+      acml_tr_pbmn: "9000000",
+      bstp_nmix_prdy_vrss: "10.00",
+      prdy_vrss_sign: "2",
+      bstp_nmix_prdy_ctrt: "0.35",
+    }));
+
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output1: fakeHistoryOutput1, output2: manyRows }))
+    );
+
+    const result = await callTool("market_get_index", { index: "KOSPI", mode: "history", limit: 2 });
+
+    expect(result.structuredContent.data.rows).toHaveLength(2);
+  });
+
+  it("returns UPSTREAM_ERROR on KIS rt_cd error", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ rt_cd: "1", msg1: "업종코드 오류" }),
+      } as unknown as Response)
+    );
+
+    const result = await callTool("market_get_index", { index: "KOSPI", mode: "quote" });
+
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      ok: false,
+      error: { code: "UPSTREAM_ERROR", message: "업종코드 오류" },
+    });
+  });
+});
+
+// ── market_get_sector ────────────────────────────────────────────────────────
+
+describe("market_get_sector", () => {
+  beforeEach(() => {
+    clearKisTokenCache();
+    clearKisResponseCache();
+    vi.unstubAllGlobals();
+  });
+
+  const fakeSectorOutput1 = {
+    hts_kor_isnm: "종합",
+    bstp_nmix_prpr: "2850.34",
+    bstp_nmix_prdy_ctrt: "0.44",
+    prdy_vrss_sign: "2",
+    bstp_nmix_oprc: "2838.00",
+    bstp_nmix_hgpr: "2855.12",
+    bstp_nmix_lwpr: "2835.60",
+    acml_vol: "593842",
+    acml_tr_pbmn: "10221804",
+    bstp_cls_code: "0001",
+  };
+
+  const fakeSectorOutput2 = [
+    {
+      stck_bsop_date: "20260706",
+      bstp_nmix_prpr: "2850.34",
+      bstp_nmix_oprc: "2838.00",
+      bstp_nmix_hgpr: "2855.12",
+      bstp_nmix_lwpr: "2835.60",
+      acml_vol: "593842",
+      acml_tr_pbmn: "10221804",
+      mod_yn: "N",
+    },
+    {
+      stck_bsop_date: "20260705",
+      bstp_nmix_prpr: "2837.89",
+      bstp_nmix_oprc: "2830.00",
+      bstp_nmix_hgpr: "2840.00",
+      bstp_nmix_lwpr: "2825.00",
+      acml_vol: "500000",
+      acml_tr_pbmn: "9500000",
+      mod_yn: "Y",
+    },
+  ];
+
+  it("returns ok:true with snapshot and rows", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output1: fakeSectorOutput1, output2: fakeSectorOutput2 }))
+    );
+
+    const result = await callTool("market_get_sector", { sector_code: "0001" });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        sector_code: "0001",
+        sector_name: "종합",
+        period: "D",
+        snapshot: {
+          price: 2850.34,
+          change_rate: 0.44,
+          change_sign: "2",
+        },
+      },
+    });
+    const rows = result.structuredContent.data.rows as object[];
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      date: "20260706",
+      close: 2850.34,
+      open: 2838.00,
+      high: 2855.12,
+      low: 2835.60,
+      volume: 593842,
+      is_adjusted: false,
+    });
+  });
+
+  it("is_adjusted is true when mod_yn is Y", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output1: fakeSectorOutput1, output2: fakeSectorOutput2 }))
+    );
+
+    const result = await callTool("market_get_sector", { sector_code: "0001" });
+
+    const rows = result.structuredContent.data.rows as { is_adjusted: boolean }[];
+    expect(rows[1].is_adjusted).toBe(true);
+  });
+
+  it("limit param slices rows", async () => {
+    const manyRows = Array.from({ length: 10 }, (_, i) => ({
+      stck_bsop_date: `2026070${i + 1}`,
+      bstp_nmix_prpr: "2850.00",
+      bstp_nmix_oprc: "2840.00",
+      bstp_nmix_hgpr: "2860.00",
+      bstp_nmix_lwpr: "2830.00",
+      acml_vol: "500000",
+      acml_tr_pbmn: "9000000",
+      mod_yn: "N",
+    }));
+
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output1: fakeSectorOutput1, output2: manyRows }))
+    );
+
+    const result = await callTool("market_get_sector", { sector_code: "0001", limit: 3 });
+
+    expect(result.structuredContent.data.rows).toHaveLength(3);
+  });
+
+  it("meta.source is KIS and source_api is inquire-daily-indexchartprice", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output1: fakeSectorOutput1, output2: fakeSectorOutput2 }))
+    );
+
+    const result = await callTool("market_get_sector", { sector_code: "0001" });
+
+    expect(result.structuredContent.meta).toMatchObject({
+      source: "KIS",
+      source_api: "inquire-daily-indexchartprice",
+    });
+  });
+});
+
+// ── market_get_news ──────────────────────────────────────────────────────────
+
+describe("market_get_news", () => {
+  beforeEach(() => {
+    clearKisTokenCache();
+    clearKisResponseCache();
+    vi.unstubAllGlobals();
+  });
+
+  const fakeNewsOutput = [
+    {
+      cntt_usiq_srno: "SN001",
+      news_ofer_entp_code: "F",
+      data_dt: "20260706",
+      data_tm: "093000",
+      hts_pbnt_titl_cntt: "삼성전자 반기보고서 제출",
+      news_lrdv_code: "1",
+    },
+    {
+      cntt_usiq_srno: "SN002",
+      news_ofer_entp_code: "6",
+      data_dt: "20260706",
+      data_tm: "092000",
+      hts_pbnt_titl_cntt: "코스피 2800선 회복",
+      news_lrdv_code: "2",
+    },
+  ];
+
+  it("returns ok:true with items array for market-wide news", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output: fakeNewsOutput }))
+    );
+
+    const result = await callTool("market_get_news", {});
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        stock_code: null,
+        items: expect.any(Array),
+      },
+    });
+    const items = result.structuredContent.data.items as object[];
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      id: "SN001",
+      provider: "F",
+      date: "20260706",
+      time: "093000",
+      title: "삼성전자 반기보고서 제출",
+    });
+  });
+
+  it("stock_code is reflected in data.stock_code", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output: fakeNewsOutput }))
+    );
+
+    const result = await callTool("market_get_news", { stock_code: "005930" });
+
+    expect(result.structuredContent.data.stock_code).toBe("005930");
+  });
+
+  it("limit param slices items", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output: fakeNewsOutput }))
+    );
+
+    const result = await callTool("market_get_news", { limit: 1 });
+
+    expect(result.structuredContent.data.items).toHaveLength(1);
+  });
+
+  it("returns empty items when output is empty", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(fakeTokenRes())
+      .mockResolvedValueOnce(fakeKisBody({ output: [] }))
+    );
+
+    const result = await callTool("market_get_news", {});
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent.data.items).toHaveLength(0);
+  });
+});

@@ -287,3 +287,113 @@ describe.skipIf(!hasCredentials || !isRealMode)("market_get_movers (real, real-m
     }
   });
 });
+
+// ── market_get_index — real mode only ────────────────────────────────────────
+
+describe.skipIf(!hasCredentials || !isRealMode)("market_get_index (real, real-mode only)", () => {
+  beforeEach(async () => { await new Promise(r => setTimeout(r, 600)); });
+
+  it("quote mode returns ok:true with numeric price for KOSPI", { timeout: 10000 }, async () => {
+    const result = await callTool("market_get_index", { index: "KOSPI", mode: "quote" });
+
+    expectOk(result);
+    const data = result.structuredContent.data;
+    expect(data.index).toBe("KOSPI");
+    expect(data.mode).toBe("quote");
+    expect(typeof data.price).toBe("number");
+    expect(data.price).toBeGreaterThan(0);
+    expect(typeof data.advances).toBe("number");
+    expect(typeof data.declines).toBe("number");
+  });
+
+  it("history mode returns rows array with OHLCV", { timeout: 10000 }, async () => {
+    const result = await callTool("market_get_index", { index: "KOSPI", mode: "history", period: "D", limit: 5 });
+
+    expectOk(result);
+    const data = result.structuredContent.data;
+    expect(data.mode).toBe("history");
+    expect(Array.isArray(data.rows)).toBe(true);
+    expect(data.rows.length).toBeGreaterThan(0);
+    expect(data.rows[0]).toMatchObject({
+      date: expect.stringMatching(/^\d{8}$/),
+      close: expect.any(Number),
+      open: expect.any(Number),
+      high: expect.any(Number),
+      low: expect.any(Number),
+      volume: expect.any(Number),
+    });
+  });
+
+  it("high >= low for every history row", { timeout: 10000 }, async () => {
+    const result = await callTool("market_get_index", { index: "KOSPI", mode: "history", period: "D", limit: 10 });
+
+    expectOk(result);
+    const rows = result.structuredContent.data.rows as { high: number; low: number }[];
+    for (const row of rows) {
+      expect(row.high).toBeGreaterThanOrEqual(row.low);
+    }
+  });
+});
+
+// ── market_get_sector — real mode only ───────────────────────────────────────
+
+describe.skipIf(!hasCredentials || !isRealMode)("market_get_sector (real, real-mode only)", () => {
+  beforeEach(async () => { await new Promise(r => setTimeout(r, 600)); });
+
+  it("returns ok:true with snapshot and rows for KOSPI 종합 (0001)", { timeout: 10000 }, async () => {
+    const result = await callTool("market_get_sector", { sector_code: "0001", period: "D", limit: 5 });
+
+    expectOk(result);
+    const data = result.structuredContent.data;
+    expect(data.sector_code).toBe("0001");
+    expect(typeof data.sector_name).toBe("string");
+    expect(data.snapshot.price).toBeGreaterThan(0);
+    expect(Array.isArray(data.rows)).toBe(true);
+    expect(data.rows.length).toBeGreaterThan(0);
+    expect(data.rows[0]).toMatchObject({
+      date: expect.stringMatching(/^\d{8}$/),
+      close: expect.any(Number),
+      open: expect.any(Number),
+      high: expect.any(Number),
+      low: expect.any(Number),
+    });
+  });
+
+  it("high >= low for every row", { timeout: 10000 }, async () => {
+    const result = await callTool("market_get_sector", { sector_code: "0001", period: "D", limit: 10 });
+
+    expectOk(result);
+    const rows = result.structuredContent.data.rows as { high: number; low: number }[];
+    for (const row of rows) {
+      expect(row.high).toBeGreaterThanOrEqual(row.low);
+    }
+  });
+});
+
+// ── market_get_news — real mode only ─────────────────────────────────────────
+
+describe.skipIf(!hasCredentials || !isRealMode)("market_get_news (real, real-mode only)", () => {
+  it("returns ok:true with items array for market-wide news", { timeout: 10000 }, async () => {
+    const result = await callTool("market_get_news", { limit: 5 });
+
+    expectOk(result);
+    const data = result.structuredContent.data;
+    expect(data.stock_code).toBeNull();
+    expect(Array.isArray(data.items)).toBe(true);
+    expect(data.items.length).toBeGreaterThan(0);
+    expect(data.items[0]).toMatchObject({
+      id: expect.any(String),
+      provider: expect.any(String),
+      date: expect.stringMatching(/^\d{8}$/),
+      time: expect.stringMatching(/^\d{6}$/),
+      title: expect.any(String),
+    });
+  });
+
+  it("stock_code filter returns news for 삼성전자 (005930)", { timeout: 10000 }, async () => {
+    const result = await callTool("market_get_news", { stock_code: "005930", limit: 5 });
+
+    expectOk(result);
+    expect(result.structuredContent.data.stock_code).toBe("005930");
+  });
+});
