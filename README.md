@@ -97,6 +97,8 @@ For Korean `companyName` input, the DART resolver searches `data/stock_data_ko.j
 
 The DART resolver now loads OpenDART `corpCode.xml` data, parses the ZIP-contained XML, and keeps a 24-hour in-memory `stock_code -> corp_code` cache so listed companies can be resolved without hardcoding each mapping. If `DART_API_KEY` is missing, OpenDART is unavailable, or parsing fails, the resolver falls back to the built-in mappings for 삼성전자, SK하이닉스, and LG에너지솔루션. If neither OpenDART data nor fallback contains the stock code, the tool returns a clear unsupported `corp_code` mapping error. The response is wrapped in the common envelope and summarizes revenue, operating income, net income, total assets, total liabilities, and total equity.
 
+DART financial statement accounts are matched with conservative aliases for common OpenDART account-name variants. When consolidated (`CFS`) and separate (`OFS`) rows are both available for the same alias, the consolidated row is preferred.
+
 ## Scripts
 
 ```powershell
