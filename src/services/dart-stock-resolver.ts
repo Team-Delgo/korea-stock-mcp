@@ -70,7 +70,7 @@ export async function resolveDartCompany(input: {
     };
   }
 
-  const stock = findStockByName(input.companyName, language);
+  const stock = findStockByName(input.companyName, detectStockDataLanguage(input.companyName, language));
 
   if (!stock) {
     return {
@@ -169,10 +169,10 @@ function findStockByName(
   companyName: string,
   language: StockDataLanguage
 ): StockDataItem | undefined {
-  const normalizedCompanyName = normalizeStockName(companyName);
+  const normalizedCompanyName = normalizeStockName(companyName, language);
 
   return loadStockData(language).find(
-    (stock) => normalizeStockName(stock.name) === normalizedCompanyName
+    (stock) => normalizeStockName(stock.name, language) === normalizedCompanyName
   );
 }
 
@@ -199,6 +199,21 @@ function getStockDataPath(language: StockDataLanguage): string {
   return resolve(currentDir, "../../data", fileName);
 }
 
-function normalizeStockName(value: string): string {
+function detectStockDataLanguage(
+  companyName: string,
+  fallbackLanguage: StockDataLanguage
+): StockDataLanguage {
+  return isEnglishCompanyName(companyName) ? "en" : fallbackLanguage;
+}
+
+function isEnglishCompanyName(value: string): boolean {
+  return /[A-Za-z]/.test(value) && !/[가-힣]/.test(value);
+}
+
+function normalizeStockName(value: string, language: StockDataLanguage): string {
+  if (language === "en") {
+    return value.trim().toUpperCase();
+  }
+
   return value.replace(/\s/g, "");
 }

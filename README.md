@@ -115,7 +115,7 @@ You can also use a supported stock code:
 }
 ```
 
-For Korean `companyName` input, the DART resolver searches `data/stock_data_ko.json` by stock name and then maps the resulting stock code to a DART `corp_code`. English stock data is kept in `data/stock_data_en.json` for future resolver expansion.
+한국어 `companyName` 입력은 `data/stock_data_ko.json`에서 종목명을 검색한 뒤, 해당 종목코드를 DART `corp_code`로 매핑합니다. 한국어 종목명은 공백을 제거해 비교하므로 `삼성 전자` 같은 입력도 `삼성전자`로 조회할 수 있습니다. 영문 `companyName` 입력은 trim 후 대문자로 normalize하여 `data/stock_data_en.json`에서 검색하므로 `NAVER`, `Naver`, `naver`처럼 대소문자가 달라도 동일한 영문 종목명으로 조회됩니다.
 
 The DART resolver now loads OpenDART `corpCode.xml` data, parses the ZIP-contained XML, and keeps a 24-hour in-memory `stock_code -> corp_code` cache so listed companies can be resolved without hardcoding each mapping. If `DART_API_KEY` is missing, OpenDART is unavailable, or parsing fails, the resolver falls back to the built-in mappings for 삼성전자, SK하이닉스, and LG에너지솔루션. If neither OpenDART data nor fallback contains the stock code, the tool returns a clear unsupported `corp_code` mapping error. The response is wrapped in the common envelope and summarizes revenue, operating income, net income, total assets, total liabilities, and total equity.
 
