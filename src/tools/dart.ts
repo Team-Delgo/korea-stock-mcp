@@ -17,16 +17,27 @@ const dartFinancialStatementInputSchema = {
   reportCode: z.enum(["11013", "11012", "11014", "11011"]).default("11011")
 };
 
-const TARGET_ACCOUNTS = [
-  "매출액",
-  "영업이익",
-  "당기순이익",
-  "자산총계",
-  "부채총계",
-  "자본총계"
-] as const;
+const TARGET_ACCOUNT_ALIASES = {
+  revenue: ["매출액", "수익(매출액)", "영업수익"],
+  operating_income: ["영업이익", "영업이익(손실)", "영업손익"],
+  net_income: [
+    "당기순이익",
+    "당기순이익(손실)",
+    "연결당기순이익",
+    "연결당기순이익(손실)",
+    "당기순손익",
+    "당기순손익(손실)",
+    "연결당기순손익",
+    "연결당기순손익(손실)",
+    "지배기업의 소유주에게 귀속되는 당기순이익",
+    "지배기업 소유주지분 순이익"
+  ],
+  total_assets: ["자산총계", "총자산"],
+  total_liabilities: ["부채총계", "총부채"],
+  total_equity: ["자본총계", "총자본"]
+} as const;
 
-type TargetAccountName = (typeof TARGET_ACCOUNTS)[number];
+type TargetAccountKey = keyof typeof TARGET_ACCOUNT_ALIASES;
 
 export function registerDartTools(server: McpServer) {
   registerNotImplementedTool(server, {
@@ -71,7 +82,7 @@ export function registerDartTools(server: McpServer) {
       }
     },
     async ({ companyName, stockCode, year, reportCode }) => {
-      const companyResolution = resolveDartCompany({ companyName, stockCode });
+      const companyResolution = await resolveDartCompany({ companyName, stockCode });
 
       if (!companyResolution.ok) {
         return jsonToolResponse(
@@ -128,13 +139,14 @@ export function registerDartTools(server: McpServer) {
   );
 }
 
-function summarizeFinancialAccounts(rows: DartFinancialStatementItem[]) {
+export function summarizeFinancialAccounts(rows: DartFinancialStatementItem[]) {
   return Object.fromEntries(
-    TARGET_ACCOUNTS.map((accountName) => {
-      const row = findAccountRow(rows, accountName);
+    Object.entries(TARGET_ACCOUNT_ALIASES).map(([accountKey, aliases]) => {
+      const row = findAccountRow(rows, aliases);
+      const accountName = getPrimaryAccountName(accountKey as TargetAccountKey);
 
       return [
-        toSnakeCaseAccountKey(accountName),
+        accountKey,
         {
           account_name: accountName,
           amount_krw: row ? parseKrwAmount(row.thstrm_amount) : null,
@@ -149,15 +161,29 @@ function summarizeFinancialAccounts(rows: DartFinancialStatementItem[]) {
 
 function findAccountRow(
   rows: DartFinancialStatementItem[],
-  accountName: TargetAccountName
+  aliases: readonly string[]
 ): DartFinancialStatementItem | undefined {
-  const matchingRows = rows.filter((row) => row.account_nm === accountName);
+  for (const alias of aliases) {
+    const normalizedAlias = normalizeAccountName(alias);
+    const matchingRows = rows.filter(
+      (row) => normalizeAccountName(row.account_nm) === normalizedAlias
+    );
 
-  return (
-    matchingRows.find((row) => row.fs_div === "CFS") ??
-    matchingRows.find((row) => row.fs_div === "OFS") ??
-    matchingRows[0]
-  );
+    const preferredRow =
+      matchingRows.find((row) => row.fs_div === "CFS") ??
+      matchingRows.find((row) => row.fs_div === "OFS") ??
+      matchingRows[0];
+
+    if (preferredRow) {
+      return preferredRow;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeAccountName(value: string | undefined): string {
+  return value?.replace(/\s/g, "") ?? "";
 }
 
 function parseKrwAmount(value: string | undefined): number | null {
@@ -169,17 +195,17 @@ function parseKrwAmount(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toSnakeCaseAccountKey(accountName: TargetAccountName): string {
-  const keys: Record<TargetAccountName, string> = {
-    매출액: "revenue",
-    영업이익: "operating_income",
-    당기순이익: "net_income",
-    자산총계: "total_assets",
-    부채총계: "total_liabilities",
-    자본총계: "total_equity"
+function getPrimaryAccountName(accountKey: TargetAccountKey): string {
+  const names: Record<TargetAccountKey, string> = {
+    revenue: "매출액",
+    operating_income: "영업이익",
+    net_income: "당기순이익",
+    total_assets: "자산총계",
+    total_liabilities: "부채총계",
+    total_equity: "자본총계"
   };
 
-  return keys[accountName];
+  return names[accountKey];
 }
 
 function mapDartError(error: unknown) {
