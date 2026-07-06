@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getDartCorpCodeByStockCode } from "./dart-corp-code.js";
 
 export type StockDataLanguage = "ko" | "en";
 
@@ -50,11 +51,11 @@ const DART_CORP_CODE_BY_STOCK_CODE: Record<
 
 const stockDataCache: Partial<Record<StockDataLanguage, StockDataItem[]>> = {};
 
-export function resolveDartCompany(input: {
+export async function resolveDartCompany(input: {
   companyName?: string;
   stockCode?: string;
   language?: StockDataLanguage;
-}): DartCompanyResolution {
+}): Promise<DartCompanyResolution> {
   const language = input.language ?? "ko";
 
   if (input.stockCode) {
@@ -82,14 +83,28 @@ export function resolveDartCompany(input: {
   return resolveStockDataItem(stock);
 }
 
-function resolveByStockCode(
+async function resolveByStockCode(
   stockCode: string,
   language: StockDataLanguage
-): DartCompanyResolution {
+): Promise<DartCompanyResolution> {
   const stock = findStockByCode(stockCode, language);
 
   if (stock) {
     return resolveStockDataItem(stock);
+  }
+
+  const corpCodeLookup = await getDartCorpCodeByStockCode(stockCode);
+
+  if (corpCodeLookup.ok) {
+    return {
+      ok: true,
+      company: {
+        companyName: corpCodeLookup.entry.corpName,
+        stockCode,
+        corpCode: corpCodeLookup.entry.corpCode,
+        market: "UNKNOWN"
+      }
+    };
   }
 
   const corpCodeMapping = DART_CORP_CODE_BY_STOCK_CODE[stockCode];
@@ -113,14 +128,28 @@ function resolveByStockCode(
   };
 }
 
-function resolveStockDataItem(stock: StockDataItem): DartCompanyResolution {
+async function resolveStockDataItem(stock: StockDataItem): Promise<DartCompanyResolution> {
+  const corpCodeLookup = await getDartCorpCodeByStockCode(stock.code);
+
+  if (corpCodeLookup.ok) {
+    return {
+      ok: true,
+      company: {
+        companyName: stock.name,
+        stockCode: stock.code,
+        corpCode: corpCodeLookup.entry.corpCode,
+        market: stock.market
+      }
+    };
+  }
+
   const corpCodeMapping = DART_CORP_CODE_BY_STOCK_CODE[stock.code];
 
   if (!corpCodeMapping) {
     return {
       ok: false,
       code: "CORP_CODE_UNSUPPORTED",
-      message: "종목명은 찾았지만 DART corp_code 매핑이 아직 지원되지 않습니다.",
+      message: "종목명은 찾았지만 DART corp_code 매핑을 찾을 수 없습니다.",
       stock
     };
   }
