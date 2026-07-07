@@ -5,6 +5,7 @@ import {
   DartClient,
   DartClientError,
   type DartCompanyOverviewResponse,
+  type DartFilingItem,
   type DartFinancialStatementItem
 } from "../clients/dart.js";
 import { createMeta, envelopeOutputSchema, successEnvelope } from "../schemas/common.js";
@@ -21,6 +22,22 @@ const dartFinancialStatementInputSchema = {
 const dartCompanyOverviewInputSchema = {
   companyName: z.string().min(1).optional(),
   stockCode: z.string().regex(/^\d{6}$/).optional()
+};
+
+const dartSearchFilingsInputSchema = {
+  companyName: z.string().min(1).optional(),
+  stockCode: z.string().regex(/^\d{6}$/).optional(),
+  corpCode: z.string().min(1).optional(),
+  corp_code: z.string().min(1).optional(),
+  stock_code: z.string().regex(/^\d{6}$/).optional(),
+  start_date: z.string().optional(),
+  end_date: z.string().optional(),
+  disclosure_type: z
+    .enum(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "ALL"])
+    .default("ALL"),
+  final_only: z.boolean().default(true),
+  page: z.number().int().positive().default(1),
+  page_size: z.number().int().positive().max(100).default(20)
 };
 
 const TARGET_ACCOUNT_ALIASES = {
@@ -46,6 +63,95 @@ const TARGET_ACCOUNT_ALIASES = {
 type TargetAccountKey = keyof typeof TARGET_ACCOUNT_ALIASES;
 
 export function registerDartTools(server: McpServer) {
+  server.registerTool(
+    "dart_search_filings",
+    {
+      title: "Search DART Filings",
+      description: "Search DART disclosures by corporation, stock, date, and type.",
+      inputSchema: dartSearchFilingsInputSchema,
+      outputSchema: envelopeOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async ({
+      companyName,
+      stockCode,
+      corpCode,
+      corp_code,
+      stock_code,
+      start_date,
+      end_date,
+      disclosure_type,
+      final_only,
+      page,
+      page_size
+    }) => {
+      const companyResolution = await resolveSearchFilingsCompany({
+        companyName,
+        stockCode,
+        stock_code,
+        corpCode,
+        corp_code
+      });
+
+      if (!companyResolution.ok) {
+        return jsonToolResponse(
+          {
+            ok: false,
+            error: {
+              code: "INVALID_INPUT",
+              message: companyResolution.message
+            },
+            meta: createMeta("DART", "dart_search_filings")
+          },
+          true
+        );
+      }
+
+      const client = new DartClient(defaultConfig.dart);
+
+      try {
+        const filingsResponse = await client.searchFilings({
+          corpCode: companyResolution.corpCode,
+          startDate: start_date,
+          endDate: end_date,
+          disclosureType: disclosure_type,
+          finalOnly: final_only,
+          page,
+          pageSize: page_size
+        });
+
+        return jsonToolResponse(
+          successEnvelope(
+            {
+              company: normalizeResolvedCompany(companyResolution.company, companyResolution.corpCode),
+              filings: normalizeFilings(filingsResponse.list ?? []),
+              page: filingsResponse.page_no ?? page,
+              page_size: filingsResponse.page_count ?? page_size,
+              total_count: filingsResponse.total_count ?? 0,
+              total_page: filingsResponse.total_page ?? 0
+            },
+            createMeta("DART", "list")
+          )
+        );
+      } catch (error) {
+        const mappedError = mapDartError(error);
+        return jsonToolResponse(
+          {
+            ok: false,
+            error: mappedError,
+            meta: createMeta("DART", "list")
+          },
+          true
+        );
+      }
+    }
+  );
+
   server.registerTool(
     "dart_get_company_overview",
     {
@@ -183,6 +289,106 @@ export function registerDartTools(server: McpServer) {
       }
     }
   );
+}
+
+interface SearchFilingsResolvedCompany {
+  companyName: string;
+  stockCode: string;
+  corpCode: string;
+  market: string;
+}
+
+type SearchFilingsCompanyResolution =
+  | {
+      ok: true;
+      corpCode: string;
+      company?: SearchFilingsResolvedCompany;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+async function resolveSearchFilingsCompany(input: {
+  companyName?: string;
+  stockCode?: string;
+  stock_code?: string;
+  corpCode?: string;
+  corp_code?: string;
+}): Promise<SearchFilingsCompanyResolution> {
+  const directCorpCode = input.corpCode ?? input.corp_code;
+
+  if (input.companyName || input.stockCode || input.stock_code) {
+    const companyResolution = await resolveDartCompany({
+      companyName: input.companyName,
+      stockCode: input.stockCode ?? input.stock_code
+    });
+
+    if (!companyResolution.ok) {
+      return {
+        ok: false,
+        message: companyResolution.message
+      };
+    }
+
+    return {
+      ok: true,
+      corpCode: companyResolution.company.corpCode,
+      company: companyResolution.company
+    };
+  }
+
+  if (directCorpCode) {
+    return {
+      ok: true,
+      corpCode: directCorpCode
+    };
+  }
+
+  return {
+    ok: false,
+    message: "companyName, stockCode, corpCode, corp_code, or stock_code is required."
+  };
+}
+
+function normalizeResolvedCompany(
+  company: SearchFilingsResolvedCompany | undefined,
+  corpCode: string
+) {
+  if (!company) {
+    return {
+      company_name: null,
+      stock_code: null,
+      corp_code: corpCode,
+      market: null
+    };
+  }
+
+  return {
+    company_name: company.companyName,
+    stock_code: company.stockCode,
+    corp_code: company.corpCode,
+    market: company.market
+  };
+}
+
+export function normalizeFilings(rows: DartFilingItem[]) {
+  return rows.map((row) => {
+    const receiptNo = nullableString(row.rcept_no);
+
+    return {
+      receipt_no: receiptNo,
+      corp_code: nullableString(row.corp_code),
+      corp_name: nullableString(row.corp_name),
+      stock_code: nullableString(row.stock_code),
+      report_name: nullableString(row.report_nm),
+      filer_name: nullableString(row.flr_nm),
+      submitted_at: nullableString(row.rcept_dt),
+      disclosure_type: nullableString(row.pblntf_ty),
+      remark: nullableString(row.rm),
+      url: receiptNo ? `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${receiptNo}` : null
+    };
+  });
 }
 
 export function normalizeCompanyOverview(overview: DartCompanyOverviewResponse) {

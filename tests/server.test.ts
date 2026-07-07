@@ -81,6 +81,7 @@ describe("MCP HTTP server", () => {
       "market_get_sector",
       "market_get_news",
       "market_get_movers",
+      "dart_search_filings",
       "dart_get_company_overview",
       "dart_get_financial_statement",
       "system_health"

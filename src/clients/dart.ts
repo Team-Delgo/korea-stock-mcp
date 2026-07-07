@@ -30,6 +30,16 @@ export interface DartCompanyOverviewRequest {
   corpCode: string;
 }
 
+export interface DartFilingsSearchRequest {
+  corpCode: string;
+  startDate?: string;
+  endDate?: string;
+  disclosureType?: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "ALL";
+  finalOnly: boolean;
+  page: number;
+  pageSize: number;
+}
+
 export interface DartFinancialStatementItem {
   rcept_no?: string;
   reprt_code?: string;
@@ -77,8 +87,83 @@ export interface DartCompanyOverviewResponse {
   acc_mt?: string;
 }
 
+export interface DartFilingItem {
+  corp_code?: string;
+  corp_name?: string;
+  stock_code?: string;
+  corp_cls?: string;
+  report_nm?: string;
+  rcept_no?: string;
+  flr_nm?: string;
+  rcept_dt?: string;
+  rm?: string;
+  pblntf_ty?: string;
+}
+
+export interface DartFilingsSearchResponse {
+  status: string;
+  message: string;
+  page_no?: number;
+  page_count?: number;
+  total_count?: number;
+  total_page?: number;
+  list?: DartFilingItem[];
+}
+
 export class DartClient {
   constructor(private readonly options: DartClientOptions) {}
+
+  async searchFilings(
+    request: DartFilingsSearchRequest
+  ): Promise<DartFilingsSearchResponse> {
+    if (!this.options.apiKey) {
+      throw new DartClientError(
+        "MISSING_API_KEY",
+        "DART_API_KEY is not configured. Add it to your environment before calling DART tools."
+      );
+    }
+
+    const url = new URL("list.json", ensureTrailingSlash(this.options.baseUrl));
+    url.searchParams.set("crtfc_key", this.options.apiKey);
+    url.searchParams.set("corp_code", request.corpCode);
+    if (request.startDate) url.searchParams.set("bgn_de", request.startDate);
+    if (request.endDate) url.searchParams.set("end_de", request.endDate);
+    url.searchParams.set("last_reprt_at", request.finalOnly ? "Y" : "N");
+    if (request.disclosureType && request.disclosureType !== "ALL") {
+      url.searchParams.set("pblntf_ty", request.disclosureType);
+    }
+    url.searchParams.set("page_no", String(request.page));
+    url.searchParams.set("page_count", String(request.pageSize));
+
+    let response: Response;
+    try {
+      response = await fetch(url);
+    } catch {
+      throw new DartClientError(
+        "UPSTREAM_ERROR",
+        "Could not reach OpenDART. Please try again later."
+      );
+    }
+
+    if (!response.ok) {
+      throw new DartClientError(
+        "UPSTREAM_ERROR",
+        `OpenDART returned HTTP ${response.status}. Please try again later.`
+      );
+    }
+
+    const payload = (await response.json()) as DartFilingsSearchResponse;
+
+    if (payload.status !== "000") {
+      throw toDartClientError(
+        payload.status,
+        payload.message,
+        "OpenDART has no filings for the requested search conditions."
+      );
+    }
+
+    return payload;
+  }
 
   async getCompanyOverview(
     request: DartCompanyOverviewRequest
