@@ -13,7 +13,7 @@ export function registerSystemTools(
     "system_health",
     {
       title: "서버 상태 확인",
-      description: "MCP 서버 상태, 버전, KIS/DART 설정 여부를 확인합니다.",
+      description: "[한국 주식 정보] MCP 서버 상태, 버전, KIS/DART 설정 여부를 확인합니다.",
       inputSchema: {},
       outputSchema: envelopeOutputSchema,
       annotations: {

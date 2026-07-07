@@ -72,7 +72,7 @@ export function registerEtfTools(server: McpServer, cfg: AppConfig) {
     "resolve_etf",
     {
       title: "ETF 검색",
-      description: "ETF명(부분/약칭 포함)으로 KIS 종목코드를 검색합니다.",
+      description: "[한국 주식 정보] ETF명(부분/약칭 포함)으로 KIS 종목코드를 검색합니다.",
       inputSchema: {
         query: z.string().min(1),
         limit: z.number().int().positive().max(50).default(10),
@@ -104,7 +104,7 @@ export function registerEtfTools(server: McpServer, cfg: AppConfig) {
     "etf_get_quote",
     {
       title: "ETF/ETN 현재가 조회",
-      description: "국내 ETF/ETN의 현재가, NAV, 추적오차율, 괴리율 등 시세 정보를 조회합니다. 6자리 종목코드 또는 ETF명을 입력할 수 있습니다.",
+      description: "[한국 주식 정보] 국내 ETF/ETN의 현재가, NAV, 추적오차율, 괴리율 등 시세 정보를 조회합니다. 6자리 종목코드 또는 ETF명을 입력할 수 있습니다.",
       inputSchema: {
         stock_code: z.string().min(1).describe("6자리 종목코드 또는 ETF명 (예: 069500, KODEX 200)"),
         market_div_code: z.string().default("J"),
@@ -216,7 +216,7 @@ export function registerEtfTools(server: McpServer, cfg: AppConfig) {
     "etf_get_holdings",
     {
       title: "ETF 구성종목 조회",
-      description: "ETF의 구성종목별 비중과 시세 정보를 조회합니다. 6자리 종목코드 또는 ETF명을 입력할 수 있습니다.",
+      description: "[한국 주식 정보] ETF의 구성종목별 비중과 시세 정보를 조회합니다. 6자리 종목코드 또는 ETF명을 입력할 수 있습니다.",
       inputSchema: {
         stock_code: z.string().min(1).describe("6자리 종목코드 또는 ETF명"),
         market_div_code: z.string().default("J"),

@@ -67,7 +67,7 @@ export function registerDartTools(server: McpServer) {
     "dart_search_filings",
     {
       title: "Search DART Filings",
-      description: "Search DART disclosures by corporation, stock, date, and type.",
+      description: "[한국 주식 정보] 종목명, 종목코드, 기간, 공시 유형으로 OpenDART 공시 목록을 검색합니다.",
       inputSchema: dartSearchFilingsInputSchema,
       outputSchema: envelopeOutputSchema,
       annotations: {
@@ -156,7 +156,7 @@ export function registerDartTools(server: McpServer) {
     "dart_get_company_overview",
     {
       title: "DART 기업 개요 조회",
-      description: "종목명 또는 6자리 종목코드로 OpenDART 기업 개황 정보를 조회합니다.",
+      description: "[한국 주식 정보] 종목명 또는 6자리 종목코드로 OpenDART 기업 개황 정보를 조회합니다.",
       inputSchema: dartCompanyOverviewInputSchema,
       outputSchema: envelopeOutputSchema,
       annotations: {
@@ -223,7 +223,7 @@ export function registerDartTools(server: McpServer) {
     "dart_get_financial_statement",
     {
       title: "DART 주요 재무제표 조회",
-      description: "종목명 또는 6자리 종목코드로 OpenDART 단일회사 주요 재무계정 정보를 조회합니다.",
+      description: "[한국 주식 정보] 종목명 또는 6자리 종목코드로 OpenDART 단일회사 주요 재무계정 정보를 조회합니다.",
       inputSchema: dartFinancialStatementInputSchema,
       outputSchema: envelopeOutputSchema,
       annotations: {

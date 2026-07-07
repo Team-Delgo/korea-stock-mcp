@@ -55,7 +55,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
     {
       title: "시장 지수 조회",
       description:
-        "KOSPI, KOSDAQ, KOSPI200 지수의 현재값 또는 일/주/월 단위 가격 이력을 조회합니다.",
+        "[한국 주식 정보] KOSPI, KOSDAQ, KOSPI200 지수의 현재값 또는 일/주/월 단위 가격 이력을 조회합니다.",
       inputSchema: {
         index: z.enum(["KOSPI", "KOSDAQ", "KOSPI200"]).default("KOSPI"),
         mode: z.enum(["quote", "history"]).default("quote"),
@@ -214,7 +214,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
     {
       title: "업종 지수 시세 조회",
       description:
-        "KIS 업종코드로 국내 업종 지수의 현재 스냅샷과 OHLCV 가격 이력을 조회합니다. 예: 0001=KOSPI종합, 1001=KOSDAQ.",
+        "[한국 주식 정보] KIS 업종코드로 국내 업종 지수의 현재 스냅샷과 OHLCV 가격 이력을 조회합니다. 예: 0001=KOSPI종합, 1001=KOSDAQ.",
       inputSchema: {
         sector_code: z.string().min(1).describe("업종코드 (예: 0001=KOSPI종합, 1001=KOSDAQ, 0002=대형주)"),
         period: z.enum(["D", "W", "M", "Y"]).default("D"),
@@ -305,7 +305,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
     {
       title: "시장 뉴스 조회",
       description:
-        "국내 주식 시장 뉴스와 공시성 제목을 조회합니다. 종목코드를 지정하면 해당 종목 관련 항목만 반환합니다.",
+        "[한국 주식 정보] 국내 주식 시장 뉴스와 공시성 제목을 조회합니다. 종목코드를 지정하면 해당 종목 관련 항목만 반환합니다.",
       inputSchema: {
         stock_code: z.string().optional().describe("종목코드 6자리 (미입력 시 전체 시장 뉴스)"),
         date: z.string().optional().describe("조회 기준 날짜 YYYYMMDD (기본: 현재)"),
@@ -377,7 +377,7 @@ export function registerMarketTools(server: McpServer, cfg: AppConfig) {
     {
       title: "시장 순위 조회",
       description:
-        "거래량, 등락률, 시가총액, 거래대금 기준으로 국내 주식 시장 순위를 조회합니다. 최대 30건을 반환합니다.",
+        "[한국 주식 정보] 거래량, 등락률, 시가총액, 거래대금 기준으로 국내 주식 시장 순위를 조회합니다. 최대 30건을 반환합니다.",
       inputSchema: {
         ranking_type: z.enum([
           "volume",
