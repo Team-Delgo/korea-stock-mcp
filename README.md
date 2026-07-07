@@ -2,7 +2,7 @@
 
 Kakao PlayMCP registration skeleton for a read-only Korean stocks MCP server.
 
-The current implementation is mostly a tool skeleton. KIS integrations and most DART tools are not implemented yet, while `dart_get_company_overview` calls the OpenDART company overview API and `dart_get_financial_statement` calls the OpenDART single-company major accounts API.
+The current implementation is mostly a tool skeleton. KIS integrations and most DART tools are not implemented yet, while `dart_search_filings` calls the OpenDART disclosure search API, `dart_get_company_overview` calls the OpenDART company overview API, and `dart_get_financial_statement` calls the OpenDART single-company major accounts API.
 
 Korean docs:
 
@@ -71,6 +71,40 @@ http://127.0.0.1:3000/mcp
 ```
 
 You should see the tools listed above. KIS tools require KIS credentials, DART tools require `DART_API_KEY`, and `system_health` returns basic server status.
+
+## DART Filings Search Example
+
+Set `DART_API_KEY` in `.env`, start the server, and call `dart_search_filings` through an MCP client.
+
+Example arguments:
+
+```json
+{
+  "companyName": "삼성전자",
+  "start_date": "20240101",
+  "end_date": "20241231",
+  "disclosure_type": "ALL",
+  "final_only": true,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+You can also use a supported stock code or a DART corporation code:
+
+```json
+{
+  "stockCode": "005930"
+}
+```
+
+```json
+{
+  "corp_code": "00126380"
+}
+```
+
+The tool resolves `companyName`, `stockCode`, or `stock_code` to an OpenDART `corp_code`, calls `list.json`, and returns normalized filing rows with DART filing URLs in the common envelope. If `disclosure_type` is `ALL`, the OpenDART `pblntf_ty` parameter is omitted.
 
 ## DART Company Overview Example
 
