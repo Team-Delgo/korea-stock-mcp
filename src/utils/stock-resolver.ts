@@ -71,19 +71,19 @@ export function searchStocks<T extends SearchableRecord>(query: string, records:
 
   const qLower = q.toLowerCase();
 
-  const exactKo = records.filter((r) => r.name === q);
+  const exactKo = records.filter((r) => r.name === q || r.name.toLowerCase() === qLower);
   if (exactKo.length > 0) return exactKo;
 
   const exactEn = records.filter((r) => (r.name_en ?? "").toLowerCase() === qLower);
   if (exactEn.length > 0) return exactEn;
 
   const prefix = records.filter(
-    (r) => r.name.startsWith(q) || (r.name_en ?? "").toLowerCase().startsWith(qLower)
+    (r) => r.name.startsWith(q) || r.name.toLowerCase().startsWith(qLower) || (r.name_en ?? "").toLowerCase().startsWith(qLower)
   );
   if (prefix.length > 0) return prefix;
 
   const sub = records.filter(
-    (r) => r.name.includes(q) || (r.name_en ?? "").toLowerCase().includes(qLower)
+    (r) => r.name.includes(q) || r.name.toLowerCase().includes(qLower) || (r.name_en ?? "").toLowerCase().includes(qLower)
   );
   if (sub.length > 0) return sub;
 
